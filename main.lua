@@ -30,6 +30,7 @@ if not guiParent then guiParent = LocalPlayer:WaitForChild("PlayerGui") end
 local function limparTudo()
     if guiParent:FindFirstChild("HapiebloxPanel") then guiParent.HapiebloxPanel:Destroy() end
     if guiParent:FindFirstChild("HapiebloxIntro") then guiParent.HapiebloxIntro:Destroy() end
+    if guiParent:FindFirstChild("HapiebloxToggle") then guiParent.HapiebloxToggle:Destroy() end
     if guiParent:FindFirstChild("ScannerMoneyGUI") then guiParent.ScannerMoneyGUI:Destroy() end
 end
 
@@ -83,11 +84,8 @@ local spriteIDs = {
 -- REPRODUÇÃO DA ANIMAÇÃO INTRO (VIA SPRITESHEETS)
 -- ==========================================
 local function tocarIntro()
-    local getAsset = getcustomasset or getsynasset
-    if not getAsset then return end
-
     local totalFrames = #spriteIDs
-    local fps = 12 -- Velocidade ajustada para transição ideal entre as sheets
+    local fps = 12 
 
     local introGui = Instance.new("ScreenGui")
     introGui.Name = "HapiebloxIntro"
@@ -98,45 +96,44 @@ local function tocarIntro()
     local imageLabel = Instance.new("ImageLabel")
     imageLabel.Size = UDim2.new(1, 0, 1, 0)
     imageLabel.Position = UDim2.new(0, 0, 0, 0)
-    imageLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    imageLabel.BackgroundTransparency = 1 -- Mantém transparente caso as imagens demorem
     imageLabel.ScaleType = Enum.ScaleType.Fit
     imageLabel.Parent = introGui
 
+    -- Tenta tocar o áudio de forma segura
+    local getAsset = getcustomasset or getsynasset
     local som = Instance.new("Sound")
-    som.SoundId = getAsset("Hapieblox/audio.m4a")
     som.Volume = 1
     som.Parent = SoundService
-    som:Play()
 
-    local conexao
-    local finalizado = false
-
-    conexao = RunService.RenderStepped:Connect(function()
-        if not som.IsPlaying or som.TimePosition >= som.TimeLength then
-            finalizado = true
-            conexao:Disconnect()
-            return
+    pcall(function()
+        if getAsset and isfile and isfile("Hapieblox/audio.m4a") then
+            som.SoundId = getAsset("Hapieblox/audio.m4a")
+            som:Play()
         end
-
-        local frameAtual = math.clamp(math.floor(som.TimePosition * fps) + 1, 1, totalFrames)
-        local assetIdAtual = spriteIDs[frameAtual]
-
-        pcall(function()
-            if assetIdAtual then
-                imageLabel.Image = "rbxassetid://" .. tostring(assetIdAtual)
-            end
-        end)
     end)
 
-    while not finalizado and som.IsPlaying do
-        task.wait(0.1)
+    -- Execução baseada em tempo real
+    local tempoTotal = (som.TimeLength > 0) and som.TimeLength or (totalFrames / fps)
+    local inicio = tick()
+
+    while (tick() - inicio) < tempoTotal do
+        local tempoDecorrido = tick() - inicio
+        local frameAtual = math.clamp(math.floor(tempoDecorrido * fps) + 1, 1, totalFrames)
+        local assetIdAtual = spriteIDs[frameAtual]
+
+        if assetIdAtual then
+            imageLabel.Image = "rbxassetid://" .. tostring(assetIdAtual)
+        end
+
+        RunService.RenderStepped:Wait()
     end
 
-    if conexao then conexao:Disconnect() end
-    som:Destroy()
+    pcall(function() som:Destroy() end)
     introGui:Destroy()
 end
 
+-- Toca a introdução antes de carregar os painéis
 tocarIntro()
 
 -- ==========================================
@@ -154,6 +151,7 @@ janela.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 janela.Active = true
 janela.Draggable = true
 janela.Parent = tela
+janela.Visible = false -- Começa oculto até terminar a intro ou ser clicado no ícone
 
 local titulo = Instance.new("TextLabel")
 titulo.Size = UDim2.new(1, -40, 0, 40)
@@ -174,7 +172,8 @@ btnFechar.TextColor3 = Color3.new(1, 1, 1)
 btnFechar.Font = Enum.Font.GothamBold
 btnFechar.TextSize = 16
 btnFechar.Parent = janela
-btnFechar.MouseButton1Click:Connect(function() tela:Destroy() end)
+-- Agora o botão X apenas esconde a janela em vez de destruir, para o ícone poder abrir de novo
+btnFechar.MouseButton1Click:Connect(function() janela.Visible = false end)
 
 local linha = Instance.new("Frame")
 linha.Size = UDim2.new(1, 0, 0, 2)
@@ -205,6 +204,38 @@ btnScanner.MouseButton1Click:Connect(function()
     task.wait(1)
     btnScanner.Text = "🔍 Executar Economy Scanner"
 end)
+
+-- ==========================================
+-- CRIANDO O ÍCONE FLUTUANTE (TOGGLE)
+-- ==========================================
+local toggleGui = Instance.new("ScreenGui")
+toggleGui.Name = "HapiebloxToggle"
+toggleGui.ResetOnSpawn = false
+toggleGui.Parent = guiParent
+
+local iconeBotao = Instance.new("ImageButton")
+iconeBotao.Size = UDim2.new(0, 50, 0, 50)
+iconeBotao.Position = UDim2.new(0, 20, 0.5, -25) -- Posição inicial (centro-esquerda)
+iconeBotao.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+-- Puxa o frame 1 da sua lista de sprites como logo
+iconeBotao.Image = "rbxassetid://" .. tostring(spriteIDs[1])
+iconeBotao.Active = true
+iconeBotao.Draggable = true -- Permite arrastar o ícone pela tela!
+iconeBotao.Parent = toggleGui
+
+local cantoIcone = Instance.new("UICorner")
+cantoIcone.CornerRadius = UDim.new(1, 0) -- Deixa o ícone totalmente redondo
+cantoIcone.Parent = iconeBotao
+
+iconeBotao.MouseButton1Click:Connect(function()
+    -- Alterna entre abrir e fechar a janela principal
+    if janela then
+        janela.Visible = not janela.Visible
+    end
+end)
+
+-- Mostra o painel logo que a intro acabar e o código chegar aqui
+janela.Visible = true
 
 -- ==========================================
 -- SISTEMA DE AUTO-UPDATE VIA JSON
