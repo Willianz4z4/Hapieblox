@@ -1,0 +1,9 @@
+*
+!main.lua
+!version.json
+!Scripts/
+!Scripts/**
+!.gitignore
+*.png
+curl_error_*.txt
+audio.m4a
