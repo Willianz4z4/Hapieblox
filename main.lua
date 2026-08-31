@@ -1,27 +1,35 @@
-local HttpService = game:GetService("HttpService")
+local HttpService = game:GetService("HttpService")                 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+local RunService = game:GetService("RunService")                   
 local SoundService = game:GetService("SoundService")
-local LocalPlayer = Players.LocalPlayer
+local ContentProvider = game:GetService("ContentProvider")
 
+local LocalPlayer = Players.LocalPlayer                            
 local versionUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/version.json"
 local rawMainUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/main.lua"
 local rawScannerUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/Scripts/scanner.lua"
-
+                                                                   
 local currentVersion = "1.0.0"
-pcall(function()
-    local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))
-    local data = HttpService:JSONDecode(req)
-    if data and data.version then currentVersion = data.version end
-end)
 
-local guiParent
+print("[Hapieblox] Iniciando script. Verificando versão...")
+
+pcall(function()                                                       
+    local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))                                                                     
+    local data = HttpService:JSONDecode(req)
+    if data and data.version then 
+        currentVersion = data.version 
+        print("[Hapieblox] Versão atual: " .. currentVersion)
+    end
+end)                                                               
+
+local guiParent                                                    
 pcall(function()
     if gethui then guiParent = gethui() else guiParent = game:GetService("CoreGui") end
-end)
+end)                                                               
 if not guiParent then guiParent = LocalPlayer:WaitForChild("PlayerGui") end
 
 local function limparTudo()
+    print("[Hapieblox] Limpando GUIs antigas...")
     if guiParent:FindFirstChild("HapiebloxPanel") then guiParent.HapiebloxPanel:Destroy() end
     if guiParent:FindFirstChild("HapiebloxIntro") then guiParent.HapiebloxIntro:Destroy() end
     if guiParent:FindFirstChild("HapiebloxToggle") then guiParent.HapiebloxToggle:Destroy() end
@@ -78,8 +86,10 @@ local spriteIDs = {
 -- MOTOR DE REPRODUÇÃO DA INTRO
 -- ==========================================
 local function tocarIntro(aoTerminar)
-    if guiParent:FindFirstChild("HapiebloxIntro") then 
-        guiParent.HapiebloxIntro:Destroy() 
+    print("[Hapieblox] Iniciando função tocarIntro()...")
+    
+    if guiParent:FindFirstChild("HapiebloxIntro") then
+        guiParent.HapiebloxIntro:Destroy()
     end
 
     local introGui = Instance.new("ScreenGui")
@@ -91,26 +101,63 @@ local function tocarIntro(aoTerminar)
     local imageLabel = Instance.new("ImageLabel")
     imageLabel.Size = UDim2.new(1, 0, 1, 0)
     imageLabel.Position = UDim2.new(0, 0, 0, 0)
-    imageLabel.BackgroundTransparency = 1 
+    imageLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0) 
+    imageLabel.BackgroundTransparency = 0 
     imageLabel.ScaleType = Enum.ScaleType.Fit
     imageLabel.Parent = introGui
 
-    local getAsset = getcustomasset or getsynasset
-    local som = Instance.new("Sound")
-    som.Volume = 1
-    som.Parent = SoundService
-    pcall(function()
-        if getAsset and isfile and isfile("Hapieblox/audio.m4a") then
-            som.SoundId = getAsset("Hapieblox/audio.m4a")
-            som:Play()
-        end
-    end)
+    local loadingText = Instance.new("TextLabel")
+    loadingText.Size = UDim2.new(1, 0, 1, 0)
+    loadingText.BackgroundTransparency = 1
+    loadingText.Text = "Carregando Animação..."
+    loadingText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    loadingText.Font = Enum.Font.GothamBold
+    loadingText.TextSize = 20
+    loadingText.Parent = introGui
 
     task.spawn(function()
+        print("[Hapieblox] Preparando Preload de " .. #spriteIDs .. " spritesheets...")
+        local imagensParaCarregar = {}
         for _, sheet in ipairs(spriteIDs) do
+            local tempImg = Instance.new("ImageLabel")
+            tempImg.Image = "rbxassetid://" .. tostring(sheet.id)
+            table.insert(imagensParaCarregar, tempImg)
+        end
+        
+        local success, err = pcall(function()
+            local startTime = tick()
+            print("[Hapieblox] Baixando imagens (ContentProvider)...")
+            ContentProvider:PreloadAsync(imagensParaCarregar)
+            print("[Hapieblox] Preload concluído em " .. string.format("%.2f", tick() - startTime) .. " segundos.")
+        end)
+        
+        if not success then
+            warn("[Hapieblox] Erro durante o Preload das imagens: " .. tostring(err))
+        end
+        
+        loadingText:Destroy()
+        imageLabel.BackgroundTransparency = 1
+
+        print("[Hapieblox] Tentando carregar áudio...")
+        local getAsset = getcustomasset or getsynasset
+        local som = Instance.new("Sound")
+        som.Volume = 1
+        som.Parent = SoundService
+        pcall(function()
+            if getAsset and isfile and isfile("Hapieblox/audio.m4a") then
+                som.SoundId = getAsset("Hapieblox/audio.m4a")
+                som:Play()
+                print("[Hapieblox] Áudio carregado e reproduzindo.")
+            else
+                warn("[Hapieblox] Áudio não encontrado em Hapieblox/audio.m4a ou executor não suporta getcustomasset.")
+            end
+        end)
+
+        print("[Hapieblox] Reproduzindo animação...")
+        for idx, sheet in ipairs(spriteIDs) do
             imageLabel.Image = "rbxassetid://" .. tostring(sheet.id)
             imageLabel.ImageRectSize = Vector2.new(sheet.fw, sheet.fh)
-            
+
             for frame = 0, sheet.maxFrames - 1 do
                 local col = frame % sheet.col
                 local row = math.floor(frame / sheet.col)
@@ -118,6 +165,10 @@ local function tocarIntro(aoTerminar)
                 task.wait(1 / 24)
             end
         end
+        
+        print("[Hapieblox] Animação finalizada.")
+        print("[Hapieblox] DICA: Se a tela ficou invisível, verifique se os IDs são de IMAGEM e não de DECAL.")
+        
         pcall(function() som:Destroy() end)
         introGui:Destroy()
         if aoTerminar then aoTerminar() end
@@ -163,7 +214,10 @@ btnFechar.TextColor3 = Color3.new(1, 1, 1)
 btnFechar.Font = Enum.Font.GothamBold
 btnFechar.TextSize = 16
 btnFechar.Parent = janela
-btnFechar.MouseButton1Click:Connect(function() janela.Visible = false end)
+btnFechar.MouseButton1Click:Connect(function() 
+    print("[Hapieblox] Janela fechada.")
+    janela.Visible = false 
+end)
 
 local linha = Instance.new("Frame")
 linha.Size = UDim2.new(1, 0, 0, 2)
@@ -185,10 +239,12 @@ btnScanner.Parent = janela
 local canto1 = Instance.new("UICorner"); canto1.CornerRadius = UDim.new(0, 6); canto1.Parent = btnScanner
 
 btnScanner.MouseButton1Click:Connect(function()
+    print("[Hapieblox] Botão Scanner clicado. Baixando script...")
     btnScanner.Text = "⏳ Baixando..."
     pcall(function() loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))() end)
     task.wait(1)
     btnScanner.Text = "🔍 Executar Economy Scanner"
+    print("[Hapieblox] Script Scanner executado.")
 end)
 
 -- NOVO BOTÃO: Testar Animação Novamente
@@ -204,14 +260,16 @@ btnAnimacao.Parent = janela
 local canto2 = Instance.new("UICorner"); canto2.CornerRadius = UDim.new(0, 6); canto2.Parent = btnAnimacao
 
 btnAnimacao.MouseButton1Click:Connect(function()
+    print("[Hapieblox] Re-executando intro manualmente.")
     janela.Visible = false
     tocarIntro(function()
         janela.Visible = true
+        print("[Hapieblox] Intro concluída, reabrindo janela principal.")
     end)
 end)
 
 -- ==========================================
--- ÍCONE FLUTUANTE 
+-- ÍCONE FLUTUANTE
 -- ==========================================
 local toggleGui = Instance.new("ScreenGui")
 toggleGui.Name = "HapiebloxToggle"
@@ -230,18 +288,25 @@ iconeBotao.Draggable = true
 iconeBotao.Parent = toggleGui
 
 local cantoIcone = Instance.new("UICorner"); cantoIcone.CornerRadius = UDim.new(1, 0); cantoIcone.Parent = iconeBotao
-iconeBotao.MouseButton1Click:Connect(function() if janela then janela.Visible = not janela.Visible end end)
+iconeBotao.MouseButton1Click:Connect(function() 
+    if janela then 
+        janela.Visible = not janela.Visible 
+        print("[Hapieblox] Alternando visibilidade da janela: " .. tostring(janela.Visible))
+    end 
+end)
 
 -- ==========================================
 -- AUTO-UPDATE
 -- ==========================================
 task.spawn(function()
+    print("[Hapieblox] Serviço de Auto-Update iniciado.")
     while tela and tela.Parent do
         task.wait(15)
         pcall(function()
             local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))
             local data = HttpService:JSONDecode(req)
             if data and data.version and data.version ~= currentVersion then
+                print("[Hapieblox] Atualização detectada! " .. currentVersion .. " -> " .. data.version)
                 game:GetService("StarterGui"):SetCore("SendNotification", {Title="🔥 Update", Text="Nova versão!", Duration=4})
                 task.wait(1)
                 limparTudo()
