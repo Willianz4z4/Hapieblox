@@ -31,64 +31,57 @@ end
 limparTudo()
 
 -- ==========================================
--- OS 38 IDs OFICIAIS GERADOS (SEM SPAM)
+-- TABELA MAPEADA AUTOMATICAMENTE (5x5 - 480x270)
 -- ==========================================
 local spriteIDs = {
-    124445268552489, -- 1
-    87795808448354,  -- 2
-    112554054774554, -- 3
-    106337465271290, -- 4
-    95878461796233,  -- 5
-    80462860316566,  -- 6
-    73198481477967,  -- 7
-    114599949245557, -- 8
-    135419241637584, -- 9
-    77477960427023,  -- 10
-    121392541420068, -- 11
-    111490992938234, -- 12
-    130032484238641, -- 13
-    108390304734606, -- 14
-    96280898565299,  -- 15
-    124448032038901, -- 16
-    94806513757824,  -- 17
-    89539141336426,  -- 18
-    112618750732962, -- 19
-    135510278591208, -- 20
-    124703980687330, -- 21
-    84338389302969,  -- 22
-    70686782719636,  -- 23
-    108358169389684, -- 24
-    95973579565028,  -- 25
-    87055093825723,  -- 26
-    93662533123963,  -- 27
-    86136436406432,  -- 28
-    100661827918735, -- 29
-    106579723665619, -- 30
-    92012869671079,  -- 31
-    84305418673666,  -- 32
-    92367395730576,  -- 33
-    114466099524303, -- 34
-    104297138771132, -- 35
-    73683396288823,  -- 36
-    118772178091802, -- 37
-    116859081210984  -- 38
+    { id = 124445268552489, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 87795808448354, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 112554054774554, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 106337465271290, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 95878461796233, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 80462860316566, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 73198481477967, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 114599949245557, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 135419241637584, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 77477960427023, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 121392541420068, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 111490992938234, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 130032484238641, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 108390304734606, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 96280898565299, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 124448032038901, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 94806513757824, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 89539141336426, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 112618750732962, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 135510278591208, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 124703980687330, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 84338389302969, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 70686782719636, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 108358169389684, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 95973579565028, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 87055093825723, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 93662533123963, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 86136436406432, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 100661827918735, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 106579723665619, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 92012869671079, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 84305418673666, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 92367395730576, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 114466099524303, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 104297138771132, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 73683396288823, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 118772178091802, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
+    { id = 116859081210984, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 }
 }
 
--- ===================================================================
--- ⚠️ CONFIGURAÇÕES DO SPRITESHEET (MUITO IMPORTANTE!) ⚠️
--- Altere os números abaixo para bater com o formato da sua imagem
--- ===================================================================
-local LARGURA_FRAME = 256  -- Quantos pixels tem a LARGURA de uma cena?
-local ALTURA_FRAME = 256   -- Quantos pixels tem a ALTURA de uma cena?
-local COLUNAS = 5          -- Quantos desenhos tem na horizontal da imagem?
-local LINHAS = 5           -- Quantos desenhos tem na vertical da imagem?
-local FRAMES_POR_SHEET = 25 -- Total de cenas/quadros dentro de 1 única imagem
-local FPS = 24             -- Velocidade da animação (Quadros por segundo)
+-- ==========================================
+-- MOTOR DE REPRODUÇÃO DA INTRO
+-- ==========================================
+local function tocarIntro(aoTerminar)
+    if guiParent:FindFirstChild("HapiebloxIntro") then 
+        guiParent.HapiebloxIntro:Destroy() 
+    end
 
--- ==========================================
--- REPRODUÇÃO DA ANIMAÇÃO INTRO (LOOP QUADRO A QUADRO)
--- ==========================================
-local function tocarIntro()
     local introGui = Instance.new("ScreenGui")
     introGui.Name = "HapiebloxIntro"
     introGui.ResetOnSpawn = false
@@ -100,8 +93,6 @@ local function tocarIntro()
     imageLabel.Position = UDim2.new(0, 0, 0, 0)
     imageLabel.BackgroundTransparency = 1 
     imageLabel.ScaleType = Enum.ScaleType.Fit
-    -- Isso avisa o Roblox para NÃO mostrar a imagem toda, apenas o tamanho de 1 cena
-    imageLabel.ImageRectSize = Vector2.new(LARGURA_FRAME, ALTURA_FRAME)
     imageLabel.Parent = introGui
 
     local getAsset = getcustomasset or getsynasset
@@ -115,34 +106,29 @@ local function tocarIntro()
         end
     end)
 
-    -- Motor da animação Spritesheet
     task.spawn(function()
-        for i, sheetId in ipairs(spriteIDs) do
-            -- Carrega o spritesheet atual (usando o ID real)
-            imageLabel.Image = "rbxassetid://" .. tostring(sheetId)
+        for _, sheet in ipairs(spriteIDs) do
+            imageLabel.Image = "rbxassetid://" .. tostring(sheet.id)
+            imageLabel.ImageRectSize = Vector2.new(sheet.fw, sheet.fh)
             
-            -- Faz o recorte percorrer a grade (Esquerda pra direita, cima pra baixo)
-            for frameAtual = 0, FRAMES_POR_SHEET - 1 do
-                local coluna = frameAtual % COLUNAS
-                local linha = math.floor(frameAtual / COLUNAS)
-                
-                -- Move a "câmera" para o quadro exato da cena
-                imageLabel.ImageRectOffset = Vector2.new(coluna * LARGURA_FRAME, linha * ALTURA_FRAME)
-                
-                -- Espera o tempo exato de 1 frame antes de ir pro próximo
-                task.wait(1 / FPS)
+            for frame = 0, sheet.maxFrames - 1 do
+                local col = frame % sheet.col
+                local row = math.floor(frame / sheet.col)
+                imageLabel.ImageRectOffset = Vector2.new(col * sheet.fw, row * sheet.fh)
+                task.wait(1 / 24)
             end
         end
-        -- Quando terminar todos os 38 sheets, fecha a intro
         pcall(function() som:Destroy() end)
         introGui:Destroy()
+        if aoTerminar then aoTerminar() end
     end)
 end
 
+-- Toca a intro na inicialização
 tocarIntro()
 
 -- ==========================================
--- CRIANDO O PAINEL PRINCIPAL
+-- PAINEL PRINCIPAL & BOTÃO DE TESTE DE ANIMAÇÃO
 -- ==========================================
 local tela = Instance.new("ScreenGui")
 tela.Name = "HapiebloxPanel"
@@ -150,13 +136,13 @@ tela.ResetOnSpawn = false
 tela.Parent = guiParent
 
 local janela = Instance.new("Frame")
-janela.Size = UDim2.new(0, 350, 0, 250)
-janela.Position = UDim2.new(0.5, -175, 0.5, -125)
+janela.Size = UDim2.new(0, 350, 0, 280)
+janela.Position = UDim2.new(0.5, -175, 0.5, -140)
 janela.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 janela.Active = true
 janela.Draggable = true
 janela.Parent = tela
-janela.Visible = false
+janela.Visible = true
 
 local titulo = Instance.new("TextLabel")
 titulo.Size = UDim2.new(1, -40, 0, 40)
@@ -186,6 +172,7 @@ linha.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 linha.BorderSizePixel = 0
 linha.Parent = janela
 
+-- Botão do Scanner
 local btnScanner = Instance.new("TextButton")
 btnScanner.Size = UDim2.new(0.9, 0, 0, 45)
 btnScanner.Position = UDim2.new(0.05, 0, 0, 60)
@@ -195,13 +182,32 @@ btnScanner.TextColor3 = Color3.fromRGB(255, 255, 255)
 btnScanner.Font = Enum.Font.GothamBold
 btnScanner.TextSize = 14
 btnScanner.Parent = janela
-local canto = Instance.new("UICorner"); canto.CornerRadius = UDim.new(0, 6); canto.Parent = btnScanner
+local canto1 = Instance.new("UICorner"); canto1.CornerRadius = UDim.new(0, 6); canto1.Parent = btnScanner
 
 btnScanner.MouseButton1Click:Connect(function()
     btnScanner.Text = "⏳ Baixando..."
     pcall(function() loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))() end)
     task.wait(1)
     btnScanner.Text = "🔍 Executar Economy Scanner"
+end)
+
+-- NOVO BOTÃO: Testar Animação Novamente
+local btnAnimacao = Instance.new("TextButton")
+btnAnimacao.Size = UDim2.new(0.9, 0, 0, 45)
+btnAnimacao.Position = UDim2.new(0.05, 0, 0, 115)
+btnAnimacao.BackgroundColor3 = Color3.fromRGB(50, 200, 100)
+btnAnimacao.Text = "🎬 Testar Animação"
+btnAnimacao.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnAnimacao.Font = Enum.Font.GothamBold
+btnAnimacao.TextSize = 14
+btnAnimacao.Parent = janela
+local canto2 = Instance.new("UICorner"); canto2.CornerRadius = UDim.new(0, 6); canto2.Parent = btnAnimacao
+
+btnAnimacao.MouseButton1Click:Connect(function()
+    janela.Visible = false
+    tocarIntro(function()
+        janela.Visible = true
+    end)
 end)
 
 -- ==========================================
@@ -216,17 +222,15 @@ local iconeBotao = Instance.new("ImageButton")
 iconeBotao.Size = UDim2.new(0, 50, 0, 50)
 iconeBotao.Position = UDim2.new(0, 20, 0.5, -25)
 iconeBotao.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-iconeBotao.Image = "rbxassetid://" .. tostring(spriteIDs[1])
-iconeBotao.ImageRectSize = Vector2.new(LARGURA_FRAME, ALTURA_FRAME)
-iconeBotao.ImageRectOffset = Vector2.new(0, 0) -- Pega a primeira cena para servir de logo
+iconeBotao.Image = "rbxassetid://" .. tostring(spriteIDs[1].id)
+iconeBotao.ImageRectSize = Vector2.new(spriteIDs[1].fw, spriteIDs[1].fh)
+iconeBotao.ImageRectOffset = Vector2.new(0, 0)
 iconeBotao.Active = true
 iconeBotao.Draggable = true
 iconeBotao.Parent = toggleGui
 
 local cantoIcone = Instance.new("UICorner"); cantoIcone.CornerRadius = UDim.new(1, 0); cantoIcone.Parent = iconeBotao
 iconeBotao.MouseButton1Click:Connect(function() if janela then janela.Visible = not janela.Visible end end)
-
-janela.Visible = true
 
 -- ==========================================
 -- AUTO-UPDATE
