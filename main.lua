@@ -8,6 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 local versionUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/version.json"
 local rawMainUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/main.lua"
 local rawScannerUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/Scripts/scanner.lua"
+local audioUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/audio1.mp3"
                                                                    
 local currentVersion = "1.0.0"
 
@@ -32,7 +33,7 @@ end
 limparTudo()
 
 -- ==========================================
--- INTRO V5.0 (MEGA PARTICLES 3D + BOLINHAS 2D)
+-- INTRO V7.0 (DOWNLOAD AUTOMÁTICO DO ÁUDIO)
 -- ==========================================
 local function tocarIntro(aoTerminar)
     if guiParent:FindFirstChild("HapiebloxIntro") then guiParent.HapiebloxIntro:Destroy() end
@@ -43,7 +44,7 @@ local function tocarIntro(aoTerminar)
     introGui.IgnoreGuiInset = true
     introGui.Parent = guiParent
 
-    -- 1. Efeito 3D no Mapa (Emissor DUPLO de Partículas na Câmera)
+    -- 1. Efeito 3D no Mapa
     local cam = workspace.CurrentCamera
     local particlePart = Instance.new("Part")
     particlePart.Size = Vector3.new(1, 1, 1)
@@ -52,7 +53,6 @@ local function tocarIntro(aoTerminar)
     particlePart.CanCollide = false
     particlePart.Parent = cam
 
-    -- Emissor 1: Estrelas brilhantes
     local pe1 = Instance.new("ParticleEmitter")
     pe1.Texture = "rbxassetid://243660364" 
     pe1.LightEmission = 1
@@ -62,36 +62,44 @@ local function tocarIntro(aoTerminar)
         ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 150, 255))
     })
     pe1.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 2), NumberSequenceKeypoint.new(1, 0)})
-    pe1.Rate = 0
-    pe1.Speed = NumberRange.new(20, 50)
-    pe1.Lifetime = NumberRange.new(1.5, 3)
-    pe1.SpreadAngle = Vector2.new(180, 180)
-    pe1.Parent = particlePart
+    pe1.Rate = 0; pe1.Speed = NumberRange.new(20, 50); pe1.Lifetime = NumberRange.new(1.5, 3)
+    pe1.SpreadAngle = Vector2.new(180, 180); pe1.Parent = particlePart
 
-    -- Emissor 2: Fumaça mágica/Glow
     local pe2 = Instance.new("ParticleEmitter")
     pe2.Texture = "rbxassetid://1319266157"
     pe2.LightEmission = 0.8
     pe2.Color = ColorSequence.new(Color3.fromRGB(255, 200, 230))
     pe2.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 4), NumberSequenceKeypoint.new(1, 0)})
     pe2.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.5), NumberSequenceKeypoint.new(1, 1)})
-    pe2.Rate = 0
-    pe2.Speed = NumberRange.new(10, 30)
-    pe2.Lifetime = NumberRange.new(2, 4)
-    pe2.SpreadAngle = Vector2.new(180, 180)
-    pe2.Parent = particlePart
+    pe2.Rate = 0; pe2.Speed = NumberRange.new(10, 30); pe2.Lifetime = NumberRange.new(2, 4)
+    pe2.SpreadAngle = Vector2.new(180, 180); pe2.Parent = particlePart
 
-    -- Segue a câmera do jogador
     local runConn = RunService.RenderStepped:Connect(function()
         particlePart.CFrame = cam.CFrame * CFrame.new(0, 0, -12)
     end)
 
-    -- 2. Áudio Sincronizado
+    -- 2. Sistema de Download e Áudio Automático
     local sfx = Instance.new("Sound")
-    sfx.SoundId = "rbxassetid://92988767341384"
     sfx.Volume = 2
     sfx.Parent = SoundService
-    sfx:Play()
+    
+    local getAsset = getcustomasset or getsynasset
+    task.spawn(function()
+        pcall(function()
+            if getAsset and writefile and isfile then
+                -- Verifica se NÃO existe, se não existir, ele baixa do seu github
+                if not isfile("audio1.mp3") then
+                    local audioData = game:HttpGet(audioUrl)
+                    writefile("audio1.mp3", audioData)
+                end
+                sfx.SoundId = getAsset("audio1.mp3")
+            else
+                -- Fallback se o executor for fraco
+                sfx.SoundId = "rbxassetid://92988767341384"
+            end
+            sfx:Play()
+        end)
+    end)
 
     -- 3. Elementos 2D
     local center = Instance.new("Frame")
@@ -123,25 +131,20 @@ local function tocarIntro(aoTerminar)
 
     task.spawn(function()
         task.wait(0.3) 
-        
-        -- DISPARA EXPLOSÃO 3D MASSIVA (400 Partículas no mundo!)
         pe1:Emit(250) 
         pe2:Emit(150)
 
-        -- Expande Brilho 2D
         TweenService:Create(brilho, TweenInfo.new(1, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
             Size = UDim2.new(0, 700, 0, 700),
             ImageTransparency = 0.4
         }):Play()
 
-        -- BOLINHAS FLUTUANTES (V3.0) VOLTARAM!
         for i = 1, 40 do
             task.spawn(function()
                 local part = Instance.new("Frame")
                 local pSize = math.random(8, 20)
                 part.Size = UDim2.new(0, pSize, 0, pSize)
-                part.Position = UDim2.new(math.random(5, 95)/100, 0, 1.2, 0) -- Nascem em baixo
-                -- Cores aleatórias entre branco e rosinha
+                part.Position = UDim2.new(math.random(5, 95)/100, 0, 1.2, 0)
                 part.BackgroundColor3 = math.random(1, 2) == 1 and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 200, 230)
                 local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(1, 0); corner.Parent = part
                 part.Parent = introGui
@@ -158,7 +161,6 @@ local function tocarIntro(aoTerminar)
             task.wait(0.01)
         end
 
-        -- Texto Bounce Redimensionado para Celular
         local textoReal = "HapieBlox Script"
         local fontSize = 38
         
@@ -195,7 +197,6 @@ local function tocarIntro(aoTerminar)
             task.wait(0.03)
         end
 
-        -- Emojis fofos saltando em volta
         local function criarDoodle(emoji, pos, rotacao, tamanhoFinal, delayAparecer)
             task.delay(delayAparecer, function()
                 local lbl = Instance.new("TextLabel")
@@ -220,7 +221,6 @@ local function tocarIntro(aoTerminar)
 
         task.wait(2.5)
 
-        -- Fade Out Limpo
         local fadeInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         TweenService:Create(brilho, fadeInfo, {ImageTransparency = 1, Size = UDim2.new(0, 900, 0, 900)}):Play()
         
@@ -240,7 +240,6 @@ local function tocarIntro(aoTerminar)
 
         task.wait(0.6)
         
-        -- Destrói TODAS as partículas do mapa para não dar lag!
         pcall(function() 
             sfx:Destroy()
             runConn:Disconnect()
