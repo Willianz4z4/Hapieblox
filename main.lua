@@ -32,7 +32,7 @@ end
 limparTudo()
 
 -- ==========================================
--- INTRO V4.0 (3D PARTICLES, STARBURST & RESPONSIVO)
+-- INTRO V5.0 (MEGA PARTICLES 3D + BOLINHAS 2D)
 -- ==========================================
 local function tocarIntro(aoTerminar)
     if guiParent:FindFirstChild("HapiebloxIntro") then guiParent.HapiebloxIntro:Destroy() end
@@ -43,7 +43,7 @@ local function tocarIntro(aoTerminar)
     introGui.IgnoreGuiInset = true
     introGui.Parent = guiParent
 
-    -- 1. Efeito 3D no Mapa (Emissor de Partículas na Câmera)
+    -- 1. Efeito 3D no Mapa (Emissor DUPLO de Partículas na Câmera)
     local cam = workspace.CurrentCamera
     local particlePart = Instance.new("Part")
     particlePart.Size = Vector3.new(1, 1, 1)
@@ -52,24 +52,38 @@ local function tocarIntro(aoTerminar)
     particlePart.CanCollide = false
     particlePart.Parent = cam
 
-    local pe = Instance.new("ParticleEmitter")
-    pe.Texture = "rbxassetid://243660364" -- Textura de faísca/estrela do Roblox
-    pe.LightEmission = 1
-    pe.Color = ColorSequence.new({
+    -- Emissor 1: Estrelas brilhantes
+    local pe1 = Instance.new("ParticleEmitter")
+    pe1.Texture = "rbxassetid://243660364" 
+    pe1.LightEmission = 1
+    pe1.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 150, 200)),
         ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
         ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 150, 255))
     })
-    pe.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 1.5), NumberSequenceKeypoint.new(1, 0)})
-    pe.Rate = 0
-    pe.Speed = NumberRange.new(10, 25)
-    pe.Lifetime = NumberRange.new(1, 2)
-    pe.SpreadAngle = Vector2.new(180, 180)
-    pe.Parent = particlePart
+    pe1.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 2), NumberSequenceKeypoint.new(1, 0)})
+    pe1.Rate = 0
+    pe1.Speed = NumberRange.new(20, 50)
+    pe1.Lifetime = NumberRange.new(1.5, 3)
+    pe1.SpreadAngle = Vector2.new(180, 180)
+    pe1.Parent = particlePart
 
-    -- Mantém a partícula na frente da câmera do jogador
+    -- Emissor 2: Fumaça mágica/Glow
+    local pe2 = Instance.new("ParticleEmitter")
+    pe2.Texture = "rbxassetid://1319266157"
+    pe2.LightEmission = 0.8
+    pe2.Color = ColorSequence.new(Color3.fromRGB(255, 200, 230))
+    pe2.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 4), NumberSequenceKeypoint.new(1, 0)})
+    pe2.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.5), NumberSequenceKeypoint.new(1, 1)})
+    pe2.Rate = 0
+    pe2.Speed = NumberRange.new(10, 30)
+    pe2.Lifetime = NumberRange.new(2, 4)
+    pe2.SpreadAngle = Vector2.new(180, 180)
+    pe2.Parent = particlePart
+
+    -- Segue a câmera do jogador
     local runConn = RunService.RenderStepped:Connect(function()
-        particlePart.CFrame = cam.CFrame * CFrame.new(0, 0, -8) -- 8 blocos na frente da câmera
+        particlePart.CFrame = cam.CFrame * CFrame.new(0, 0, -12)
     end)
 
     -- 2. Áudio Sincronizado
@@ -91,7 +105,7 @@ local function tocarIntro(aoTerminar)
     brilho.Position = UDim2.new(0.5, 0, 0.5, 0)
     brilho.AnchorPoint = Vector2.new(0.5, 0.5)
     brilho.BackgroundTransparency = 1
-    brilho.ImageColor3 = Color3.fromRGB(255, 150, 220)
+    brilho.ImageColor3 = Color3.fromRGB(255, 170, 220)
     brilho.ImageTransparency = 1
     brilho.Parent = center
 
@@ -104,54 +118,53 @@ local function tocarIntro(aoTerminar)
     layout.FillDirection = Enum.FillDirection.Horizontal
     layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
     layout.VerticalAlignment = Enum.VerticalAlignment.Center
-    layout.Padding = UDim.new(0, 0) -- Sem padding pra caber na tela do celular
+    layout.Padding = UDim.new(0, 0)
     layout.Parent = textContainer
 
     task.spawn(function()
         task.wait(0.3) 
         
-        -- Dispara as partículas 3D no mapa!
-        pe:Emit(80) 
+        -- DISPARA EXPLOSÃO 3D MASSIVA (400 Partículas no mundo!)
+        pe1:Emit(250) 
+        pe2:Emit(150)
 
-        -- Animação do Brilho 2D pulsante
+        -- Expande Brilho 2D
         TweenService:Create(brilho, TweenInfo.new(1, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 600, 0, 600),
+            Size = UDim2.new(0, 700, 0, 700),
             ImageTransparency = 0.4
         }):Play()
 
-        -- Explosão Circular de Estrelas UI (Matemática Pura)
-        for i = 1, 12 do
-            local star = Instance.new("TextLabel")
-            star.Text = "⭐"
-            star.BackgroundTransparency = 1
-            star.Size = UDim2.new(0, 30, 0, 30)
-            star.AnchorPoint = Vector2.new(0.5, 0.5)
-            star.Position = UDim2.new(0.5, 0, 0.5, 0)
-            star.TextSize = 25
-            star.Parent = center
-
-            -- Calcula a posição em círculo
-            local angle = math.rad((i / 12) * 360)
-            local raioX = 150 * math.cos(angle)
-            local raioY = 150 * math.sin(angle)
-
-            local tweenStar = TweenService:Create(star, TweenInfo.new(1, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-                Position = UDim2.new(0.5, raioX, 0.5, raioY),
-                TextSize = 0,
-                Rotation = math.random(180, 360)
-            })
-            tweenStar:Play()
-            tweenStar.Completed:Connect(function() star:Destroy() end)
+        -- BOLINHAS FLUTUANTES (V3.0) VOLTARAM!
+        for i = 1, 40 do
+            task.spawn(function()
+                local part = Instance.new("Frame")
+                local pSize = math.random(8, 20)
+                part.Size = UDim2.new(0, pSize, 0, pSize)
+                part.Position = UDim2.new(math.random(5, 95)/100, 0, 1.2, 0) -- Nascem em baixo
+                -- Cores aleatórias entre branco e rosinha
+                part.BackgroundColor3 = math.random(1, 2) == 1 and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 200, 230)
+                local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(1, 0); corner.Parent = part
+                part.Parent = introGui
+                
+                local tInfo = TweenInfo.new(math.random(20, 40)/10, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+                local tw = TweenService:Create(part, tInfo, {
+                    Position = UDim2.new(part.Position.X.Scale + (math.random(-15, 15)/100), 0, math.random(10, 60)/100, 0),
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(0, 0, 0, 0)
+                })
+                tw:Play()
+                tw.Completed:Connect(function() part:Destroy() end)
+            end)
+            task.wait(0.01)
         end
 
         -- Texto Bounce Redimensionado para Celular
         local textoReal = "HapieBlox Script"
-        local fontSize = 38 -- Menor para caber no celular
+        local fontSize = 38
         
         for i = 1, #textoReal do
             local char = string.sub(textoReal, i, i)
             local charWrap = Instance.new("Frame")
-            -- Caixas menores para telas mobile
             charWrap.Size = char == " " and UDim2.new(0, 10, 0, 60) or UDim2.new(0, 24, 0, 60)
             charWrap.BackgroundTransparency = 1
             charWrap.Parent = textContainer
@@ -182,11 +195,34 @@ local function tocarIntro(aoTerminar)
             task.wait(0.03)
         end
 
+        -- Emojis fofos saltando em volta
+        local function criarDoodle(emoji, pos, rotacao, tamanhoFinal, delayAparecer)
+            task.delay(delayAparecer, function()
+                local lbl = Instance.new("TextLabel")
+                lbl.BackgroundTransparency = 1
+                lbl.Text = emoji
+                lbl.TextSize = 0
+                lbl.Rotation = rotacao - 60 
+                lbl.Position = pos
+                lbl.Font = Enum.Font.GothamBold
+                lbl.Parent = center
+                local anim = TweenInfo.new(0.8, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
+                TweenService:Create(lbl, anim, {TextSize = tamanhoFinal, Rotation = rotacao}):Play()
+            end)
+        end
+
+        criarDoodle("🌸", UDim2.new(0.85, 0, 0.25, 0), 15, 50, 0.2)
+        criarDoodle("💖", UDim2.new(0.80, 0, -0.05, 0), -10, 40, 0.3)
+        criarDoodle("☁️", UDim2.new(0.12, 0, 0.15, 0), -20, 55, 0.4)
+        criarDoodle("🎀", UDim2.new(0.20, 0, 0.8, 0), 10, 45, 0.5)
+        criarDoodle("🧸", UDim2.new(0.08, 0, 0.55, 0), 5, 40, 0.6)
+        criarDoodle("✨", UDim2.new(0.88, 0, 0.75, 0), -15, 45, 0.7)
+
         task.wait(2.5)
 
         -- Fade Out Limpo
         local fadeInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        TweenService:Create(brilho, fadeInfo, {ImageTransparency = 1, Size = UDim2.new(0, 800, 0, 800)}):Play()
+        TweenService:Create(brilho, fadeInfo, {ImageTransparency = 1, Size = UDim2.new(0, 900, 0, 900)}):Play()
         
         for _, wrap in ipairs(textContainer:GetChildren()) do
             if wrap:IsA("Frame") then
@@ -198,10 +234,13 @@ local function tocarIntro(aoTerminar)
                 end
             end
         end
+        for _, obj in ipairs(center:GetChildren()) do
+            if obj:IsA("TextLabel") then TweenService:Create(obj, fadeInfo, {TextTransparency = 1, TextSize = 0}):Play() end
+        end
 
         task.wait(0.6)
         
-        -- Limpeza
+        -- Destrói TODAS as partículas do mapa para não dar lag!
         pcall(function() 
             sfx:Destroy()
             runConn:Disconnect()
