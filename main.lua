@@ -33,7 +33,38 @@ end
 limparTudo()
 
 -- ==========================================
--- INTRO V7.0 (DOWNLOAD AUTOMÁTICO DO ÁUDIO)
+-- SISTEMA DE OCULTAR/REVELAR JOGADORES (FANTASMA)
+-- ==========================================
+local originalTransparencies = {}
+
+local function sumirComJogadores()
+    originalTransparencies = {} -- Limpa a tabela
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr.Character then
+            for _, part in ipairs(plr.Character:GetDescendants()) do
+                if part:IsA("BasePart") or part:IsA("Decal") or part:IsA("Texture") then
+                    if part.Name ~= "HumanoidRootPart" then
+                        -- Salva como era antes e deixa invisível rápido
+                        originalTransparencies[part] = part.Transparency
+                        TweenService:Create(part, TweenInfo.new(0.3), {Transparency = 1}):Play()
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function revelarJogadores()
+    for part, originalTrans in pairs(originalTransparencies) do
+        if part and part.Parent then
+            -- Revela bem suavemente ao final da intro
+            TweenService:Create(part, TweenInfo.new(2.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Transparency = originalTrans}):Play()
+        end
+    end
+end
+
+-- ==========================================
+-- INTRO V8.0 (PLAYERS INVISÍVEIS + ÁUDIO REFORÇADO)
 -- ==========================================
 local function tocarIntro(aoTerminar)
     if guiParent:FindFirstChild("HapiebloxIntro") then guiParent.HapiebloxIntro:Destroy() end
@@ -43,6 +74,9 @@ local function tocarIntro(aoTerminar)
     introGui.ResetOnSpawn = false
     introGui.IgnoreGuiInset = true
     introGui.Parent = guiParent
+
+    -- Esconde todos os bonecos do mapa!
+    sumirComJogadores()
 
     -- 1. Efeito 3D no Mapa
     local cam = workspace.CurrentCamera
@@ -78,27 +112,24 @@ local function tocarIntro(aoTerminar)
         particlePart.CFrame = cam.CFrame * CFrame.new(0, 0, -12)
     end)
 
-    -- 2. Sistema de Download e Áudio Automático
+    -- 2. Sistema de Áudio Reforçado
     local sfx = Instance.new("Sound")
-    sfx.Volume = 2
+    sfx.Volume = 3 -- Aumentei o volume
+    sfx.SoundId = "rbxassetid://92988767341384" -- Já seta o ID de segurança primeiro
     sfx.Parent = SoundService
     
     local getAsset = getcustomasset or getsynasset
     task.spawn(function()
         pcall(function()
             if getAsset and writefile and isfile then
-                -- Verifica se NÃO existe, se não existir, ele baixa do seu github
                 if not isfile("audio1.mp3") then
                     local audioData = game:HttpGet(audioUrl)
                     writefile("audio1.mp3", audioData)
                 end
                 sfx.SoundId = getAsset("audio1.mp3")
-            else
-                -- Fallback se o executor for fraco
-                sfx.SoundId = "rbxassetid://92988767341384"
             end
-            sfx:Play()
         end)
+        sfx:Play()
     end)
 
     -- 3. Elementos 2D
@@ -219,7 +250,10 @@ local function tocarIntro(aoTerminar)
         criarDoodle("🧸", UDim2.new(0.08, 0, 0.55, 0), 5, 40, 0.6)
         criarDoodle("✨", UDim2.new(0.88, 0, 0.75, 0), -15, 45, 0.7)
 
-        task.wait(2.5)
+        task.wait(2.2)
+
+        -- Inicia a REVELAÇÃO FANTASMA dos jogadores no mapa!
+        revelarJogadores()
 
         local fadeInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         TweenService:Create(brilho, fadeInfo, {ImageTransparency = 1, Size = UDim2.new(0, 900, 0, 900)}):Play()
