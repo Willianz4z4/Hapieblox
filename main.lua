@@ -8,7 +8,6 @@ local LocalPlayer = Players.LocalPlayer
 local versionUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/version.json"
 local rawMainUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/main.lua"
 local rawScannerUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/Scripts/scanner.lua"
-local audioUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/audio1.mp3"
                                                                    
 local currentVersion = "1.0.0"
 
@@ -27,6 +26,7 @@ if not guiParent then guiParent = LocalPlayer:WaitForChild("PlayerGui") end
 local function limparTudo()
     if guiParent:FindFirstChild("HapiebloxPanel") then guiParent.HapiebloxPanel:Destroy() end
     if guiParent:FindFirstChild("HapiebloxIntro") then guiParent.HapiebloxIntro:Destroy() end
+    if guiParent:FindFirstChild("HapiebloxDuck") then guiParent.HapiebloxDuck:Destroy() end
     if guiParent:FindFirstChild("HapiebloxToggle") then guiParent.HapiebloxToggle:Destroy() end
 end
 
@@ -38,13 +38,12 @@ limparTudo()
 local originalTransparencies = {}
 
 local function sumirComJogadores()
-    originalTransparencies = {} -- Limpa a tabela
+    originalTransparencies = {}
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr.Character then
             for _, part in ipairs(plr.Character:GetDescendants()) do
                 if part:IsA("BasePart") or part:IsA("Decal") or part:IsA("Texture") then
                     if part.Name ~= "HumanoidRootPart" then
-                        -- Salva como era antes e deixa invisível rápido
                         originalTransparencies[part] = part.Transparency
                         TweenService:Create(part, TweenInfo.new(0.3), {Transparency = 1}):Play()
                     end
@@ -57,14 +56,81 @@ end
 local function revelarJogadores()
     for part, originalTrans in pairs(originalTransparencies) do
         if part and part.Parent then
-            -- Revela bem suavemente ao final da intro
             TweenService:Create(part, TweenInfo.new(2.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Transparency = originalTrans}):Play()
         end
     end
 end
 
+local function tocarSFX(id, vol, pitch)
+    task.spawn(function()
+        local snd = Instance.new("Sound")
+        snd.SoundId = "rbxassetid://" .. tostring(id)
+        snd.Volume = vol or 1
+        snd.PlaybackSpeed = pitch or 1
+        snd.Parent = SoundService
+        snd:Play()
+        snd.Ended:Wait()
+        snd:Destroy()
+    end)
+end
+
 -- ==========================================
--- INTRO V8.0 (PLAYERS INVISÍVEIS + ÁUDIO REFORÇADO)
+-- EASTER EGG: O PATO HACKER APÓS A INTRO
+-- ==========================================
+local function mostrarPatoHacker()
+    task.wait(2.0) -- Aguarda 2 segundos exatos após a intro sumir
+
+    local duckGui = Instance.new("ScreenGui")
+    duckGui.Name = "HapiebloxDuck"
+    duckGui.ResetOnSpawn = false
+    duckGui.IgnoreGuiInset = true
+    duckGui.Parent = guiParent
+
+    local duckFrame = Instance.new("Frame")
+    duckFrame.Size = UDim2.new(0, 0, 0, 0) -- Nasce invisível/pequeno
+    duckFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    duckFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    duckFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    duckFrame.BorderSizePixel = 0
+    duckFrame.Parent = duckGui
+
+    local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(0, 16); corner.Parent = duckFrame
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(0, 255, 120) -- Verde Hacker
+    stroke.Thickness = 3
+    stroke.Parent = duckFrame
+
+    local duckText = Instance.new("TextLabel")
+    duckText.Size = UDim2.new(1, 0, 1, 0)
+    duckText.BackgroundTransparency = 1
+    duckText.Text = "🦆 [HAPIE.DUCK v1.0]"
+    duckText.TextColor3 = Color3.fromRGB(0, 255, 120)
+    duckText.Font = Enum.Font.Code
+    duckText.TextSize = 22
+    duckText.Parent = duckFrame
+
+    -- Som de erro/sistema ao o pato surgir
+    tocarSFX(4590657391, 1, 1.2)
+
+    -- Animação de entrada do Pato (Estoura na tela)
+    TweenService:Create(duckFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 260, 0, 80)
+    }):Play()
+
+    -- Fica na tela por 1.5 segundo e some
+    task.wait(1.5)
+
+    TweenService:Create(duckFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0)
+    }):Play()
+
+    task.wait(0.3)
+    duckGui:Destroy()
+end
+
+-- ==========================================
+-- INTRO V11.0 (TECH, HACKER & SEM FOFURA)
 -- ==========================================
 local function tocarIntro(aoTerminar)
     if guiParent:FindFirstChild("HapiebloxIntro") then guiParent.HapiebloxIntro:Destroy() end
@@ -75,10 +141,8 @@ local function tocarIntro(aoTerminar)
     introGui.IgnoreGuiInset = true
     introGui.Parent = guiParent
 
-    -- Esconde todos os bonecos do mapa!
     sumirComJogadores()
 
-    -- 1. Efeito 3D no Mapa
     local cam = workspace.CurrentCamera
     local particlePart = Instance.new("Part")
     particlePart.Size = Vector3.new(1, 1, 1)
@@ -87,52 +151,23 @@ local function tocarIntro(aoTerminar)
     particlePart.CanCollide = false
     particlePart.Parent = cam
 
+    -- Partículas estilo Matrix/Tech (Cores Ciano e Verde)
     local pe1 = Instance.new("ParticleEmitter")
     pe1.Texture = "rbxassetid://243660364" 
     pe1.LightEmission = 1
     pe1.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 150, 200)),
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 200)),
         ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 150, 255))
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 150, 255))
     })
     pe1.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 2), NumberSequenceKeypoint.new(1, 0)})
-    pe1.Rate = 0; pe1.Speed = NumberRange.new(20, 50); pe1.Lifetime = NumberRange.new(1.5, 3)
+    pe1.Rate = 0; pe1.Speed = NumberRange.new(25, 60); pe1.Lifetime = NumberRange.new(1.2, 2.5)
     pe1.SpreadAngle = Vector2.new(180, 180); pe1.Parent = particlePart
-
-    local pe2 = Instance.new("ParticleEmitter")
-    pe2.Texture = "rbxassetid://1319266157"
-    pe2.LightEmission = 0.8
-    pe2.Color = ColorSequence.new(Color3.fromRGB(255, 200, 230))
-    pe2.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 4), NumberSequenceKeypoint.new(1, 0)})
-    pe2.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.5), NumberSequenceKeypoint.new(1, 1)})
-    pe2.Rate = 0; pe2.Speed = NumberRange.new(10, 30); pe2.Lifetime = NumberRange.new(2, 4)
-    pe2.SpreadAngle = Vector2.new(180, 180); pe2.Parent = particlePart
 
     local runConn = RunService.RenderStepped:Connect(function()
         particlePart.CFrame = cam.CFrame * CFrame.new(0, 0, -12)
     end)
 
-    -- 2. Sistema de Áudio Reforçado
-    local sfx = Instance.new("Sound")
-    sfx.Volume = 3 -- Aumentei o volume
-    sfx.SoundId = "rbxassetid://92988767341384" -- Já seta o ID de segurança primeiro
-    sfx.Parent = SoundService
-    
-    local getAsset = getcustomasset or getsynasset
-    task.spawn(function()
-        pcall(function()
-            if getAsset and writefile and isfile then
-                if not isfile("audio1.mp3") then
-                    local audioData = game:HttpGet(audioUrl)
-                    writefile("audio1.mp3", audioData)
-                end
-                sfx.SoundId = getAsset("audio1.mp3")
-            end
-        end)
-        sfx:Play()
-    end)
-
-    -- 3. Elementos 2D
     local center = Instance.new("Frame")
     center.Size = UDim2.new(1, 0, 1, 0)
     center.BackgroundTransparency = 1
@@ -144,7 +179,7 @@ local function tocarIntro(aoTerminar)
     brilho.Position = UDim2.new(0.5, 0, 0.5, 0)
     brilho.AnchorPoint = Vector2.new(0.5, 0.5)
     brilho.BackgroundTransparency = 1
-    brilho.ImageColor3 = Color3.fromRGB(255, 170, 220)
+    brilho.ImageColor3 = Color3.fromRGB(0, 200, 255) -- Brilho Ciano Cibernético
     brilho.ImageTransparency = 1
     brilho.Parent = center
 
@@ -162,27 +197,29 @@ local function tocarIntro(aoTerminar)
 
     task.spawn(function()
         task.wait(0.3) 
-        pe1:Emit(250) 
-        pe2:Emit(150)
+        pe1:Emit(300)
+        
+        tocarSFX(134012322, 1.2, 1.3) -- Som de sistema inicializando
 
-        TweenService:Create(brilho, TweenInfo.new(1, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+        TweenService:Create(brilho, TweenInfo.new(0.8, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
             Size = UDim2.new(0, 700, 0, 700),
             ImageTransparency = 0.4
         }):Play()
 
-        for i = 1, 40 do
+        -- Partículas cibernéticas subindo
+        for i = 1, 35 do
             task.spawn(function()
                 local part = Instance.new("Frame")
-                local pSize = math.random(8, 20)
+                local pSize = math.random(6, 14)
                 part.Size = UDim2.new(0, pSize, 0, pSize)
                 part.Position = UDim2.new(math.random(5, 95)/100, 0, 1.2, 0)
-                part.BackgroundColor3 = math.random(1, 2) == 1 and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(255, 200, 230)
-                local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(1, 0); corner.Parent = part
+                part.BackgroundColor3 = math.random(1, 2) == 1 and Color3.fromRGB(0, 255, 200) or Color3.fromRGB(0, 150, 255)
+                local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(0, 2); corner.Parent = part
                 part.Parent = introGui
                 
-                local tInfo = TweenInfo.new(math.random(20, 40)/10, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+                local tInfo = TweenInfo.new(math.random(15, 30)/10, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
                 local tw = TweenService:Create(part, tInfo, {
-                    Position = UDim2.new(part.Position.X.Scale + (math.random(-15, 15)/100), 0, math.random(10, 60)/100, 0),
+                    Position = UDim2.new(part.Position.X.Scale + (math.random(-10, 10)/100), 0, math.random(10, 60)/100, 0),
                     BackgroundTransparency = 1,
                     Size = UDim2.new(0, 0, 0, 0)
                 })
@@ -210,53 +247,58 @@ local function tocarIntro(aoTerminar)
                 lbl.BackgroundTransparency = 1
                 lbl.Font = Enum.Font.GothamBlack
                 lbl.TextSize = 0
-                lbl.TextColor3 = Color3.fromRGB(20, 20, 25)
+                lbl.TextColor3 = Color3.fromRGB(240, 240, 250)
                 lbl.Parent = charWrap
 
                 local str = Instance.new("UIStroke")
-                str.Color = Color3.fromRGB(255, 255, 255)
+                str.Color = Color3.fromRGB(0, 200, 255) -- Contorno Ciano Tech
                 str.Thickness = 3
                 str.Parent = lbl
 
                 task.spawn(function()
-                    TweenService:Create(lbl, TweenInfo.new(0.6, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out), {
+                    TweenService:Create(lbl, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
                         TextSize = fontSize,
                         Position = UDim2.new(0, 0, 0, 0)
                     }):Play()
+                    
+                    -- Som de teclado / digitação digital
+                    tocarSFX(8777977699, 0.8, math.random(80, 140)/100)
                 end)
             end
             task.wait(0.03)
         end
 
-        local function criarDoodle(emoji, pos, rotacao, tamanhoFinal, delayAparecer)
+        -- Emojis Hacker/Tecnologia substituindo os antigos
+        local function criarTechIcon(emoji, pos, rotacao, tamanhoFinal, delayAparecer)
             task.delay(delayAparecer, function()
                 local lbl = Instance.new("TextLabel")
                 lbl.BackgroundTransparency = 1
                 lbl.Text = emoji
                 lbl.TextSize = 0
-                lbl.Rotation = rotacao - 60 
+                lbl.Rotation = rotacao - 40 
                 lbl.Position = pos
-                lbl.Font = Enum.Font.GothamBold
+                lbl.Font = Enum.Font.Code
                 lbl.Parent = center
-                local anim = TweenInfo.new(0.8, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
+                local anim = TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
                 TweenService:Create(lbl, anim, {TextSize = tamanhoFinal, Rotation = rotacao}):Play()
+                
+                tocarSFX(2811444158, 0.5, 1.5) -- Som de glitch/tech pop
             end)
         end
 
-        criarDoodle("🌸", UDim2.new(0.85, 0, 0.25, 0), 15, 50, 0.2)
-        criarDoodle("💖", UDim2.new(0.80, 0, -0.05, 0), -10, 40, 0.3)
-        criarDoodle("☁️", UDim2.new(0.12, 0, 0.15, 0), -20, 55, 0.4)
-        criarDoodle("🎀", UDim2.new(0.20, 0, 0.8, 0), 10, 45, 0.5)
-        criarDoodle("🧸", UDim2.new(0.08, 0, 0.55, 0), 5, 40, 0.6)
-        criarDoodle("✨", UDim2.new(0.88, 0, 0.75, 0), -15, 45, 0.7)
+        criarTechIcon("</>", UDim2.new(0.83, 0, 0.22, 0), 10, 32, 0.1)
+        criarTechIcon("⚡", UDim2.new(0.78, 0, -0.05, 0), -15, 38, 0.2)
+        criarTechIcon("🤖", UDim2.new(0.12, 0, 0.15, 0), -10, 35, 0.3)
+        criarTechIcon("💻", UDim2.new(0.18, 0, 0.8, 0), 15, 35, 0.4)
+        criarTechIcon("🛡️", UDim2.new(0.07, 0, 0.52, 0), -5, 32, 0.5)
+        criarTechIcon("⚙️", UDim2.new(0.88, 0, 0.72, 0), 25, 36, 0.6)
 
-        task.wait(2.2)
+        task.wait(2.0)
 
-        -- Inicia a REVELAÇÃO FANTASMA dos jogadores no mapa!
         revelarJogadores()
 
-        local fadeInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        TweenService:Create(brilho, fadeInfo, {ImageTransparency = 1, Size = UDim2.new(0, 900, 0, 900)}):Play()
+        local fadeInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        TweenService:Create(brilho, fadeInfo, {ImageTransparency = 1, Size = UDim2.new(0, 800, 0, 800)}):Play()
         
         for _, wrap in ipairs(textContainer:GetChildren()) do
             if wrap:IsA("Frame") then
@@ -272,15 +314,18 @@ local function tocarIntro(aoTerminar)
             if obj:IsA("TextLabel") then TweenService:Create(obj, fadeInfo, {TextTransparency = 1, TextSize = 0}):Play() end
         end
 
-        task.wait(0.6)
+        task.wait(0.5)
         
         pcall(function() 
-            sfx:Destroy()
             runConn:Disconnect()
             particlePart:Destroy()
         end)
         introGui:Destroy()
+        
         if aoTerminar then aoTerminar() end
+
+        -- DISPARA O PATO HACKER APÓS 2 SEGUNDOS!
+        task.spawn(mostrarPatoHacker)
     end)
 end
 
