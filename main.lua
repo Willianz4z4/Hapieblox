@@ -8,9 +8,6 @@ local versionUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main
 local rawMainUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/main.lua"
 local rawScannerUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/Scripts/scanner.lua"
 
--- ==========================================
--- BUSCA A VERSÃO ATUAL NO INÍCIO
--- ==========================================
 local currentVersion = "1.0.0"
 pcall(function()
     local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))
@@ -18,9 +15,6 @@ pcall(function()
     if data and data.version then currentVersion = data.version end
 end)
 
--- ==========================================
--- DEFINIÇÃO DO PARENT DE GUI E LIMPEZA
--- ==========================================
 local guiParent
 pcall(function()
     if gethui then guiParent = gethui() else guiParent = game:GetService("CoreGui") end
@@ -37,34 +31,64 @@ end
 limparTudo()
 
 -- ==========================================
--- LISTA DE IDs DAS SPRITESHEETS (1 a 16)
+-- OS 38 IDs OFICIAIS GERADOS (SEM SPAM)
 -- ==========================================
 local spriteIDs = {
-    124445268552489, -- spritesheet1.png
-    87795808448354,  -- spritesheet2.png
-    112554054774554, -- spritesheet3.png
-    106337465271290, -- spritesheet4.png
-    95878461796233,  -- spritesheet5.png
-    80462860316566,  -- spritesheet6.png
-    73198481477967,  -- spritesheet7.png
-    114599949245557, -- spritesheet8.png
-    135419241637584, -- spritesheet9.png
-    77477960427023,  -- spritesheet10.png
-    121392541420068, -- spritesheet11.png
-    111490992938234, -- spritesheet12.png
-    130032484238641, -- spritesheet13.png
-    108390304734606, -- spritesheet14.png
-    96280898565299,  -- spritesheet15.png
-    124448032038901  -- spritesheet16.png
+    124445268552489, -- 1
+    87795808448354,  -- 2
+    112554054774554, -- 3
+    106337465271290, -- 4
+    95878461796233,  -- 5
+    80462860316566,  -- 6
+    73198481477967,  -- 7
+    114599949245557, -- 8
+    135419241637584, -- 9
+    77477960427023,  -- 10
+    121392541420068, -- 11
+    111490992938234, -- 12
+    130032484238641, -- 13
+    108390304734606, -- 14
+    96280898565299,  -- 15
+    124448032038901, -- 16
+    94806513757824,  -- 17
+    89539141336426,  -- 18
+    112618750732962, -- 19
+    135510278591208, -- 20
+    124703980687330, -- 21
+    84338389302969,  -- 22
+    70686782719636,  -- 23
+    108358169389684, -- 24
+    95973579565028,  -- 25
+    87055093825723,  -- 26
+    93662533123963,  -- 27
+    86136436406432,  -- 28
+    100661827918735, -- 29
+    106579723665619, -- 30
+    92012869671079,  -- 31
+    84305418673666,  -- 32
+    92367395730576,  -- 33
+    114466099524303, -- 34
+    104297138771132, -- 35
+    73683396288823,  -- 36
+    118772178091802, -- 37
+    116859081210984  -- 38
 }
 
+-- ===================================================================
+-- ⚠️ CONFIGURAÇÕES DO SPRITESHEET (MUITO IMPORTANTE!) ⚠️
+-- Altere os números abaixo para bater com o formato da sua imagem
+-- ===================================================================
+local LARGURA_FRAME = 256  -- Quantos pixels tem a LARGURA de uma cena?
+local ALTURA_FRAME = 256   -- Quantos pixels tem a ALTURA de uma cena?
+local COLUNAS = 5          -- Quantos desenhos tem na horizontal da imagem?
+local LINHAS = 5           -- Quantos desenhos tem na vertical da imagem?
+local FRAMES_POR_SHEET = 25 -- Total de cenas/quadros dentro de 1 única imagem
+local FPS = 24             -- Velocidade da animação (Quadros por segundo)
+
 -- ==========================================
--- REPRODUÇÃO DA ANIMAÇÃO INTRO (VIA SPRITESHEETS)
+-- REPRODUÇÃO DA ANIMAÇÃO INTRO (LOOP QUADRO A QUADRO)
 -- ==========================================
 local function tocarIntro()
-    local totalFrames = #spriteIDs
-    local fps = 12 
-
     local introGui = Instance.new("ScreenGui")
     introGui.Name = "HapiebloxIntro"
     introGui.ResetOnSpawn = false
@@ -74,16 +98,16 @@ local function tocarIntro()
     local imageLabel = Instance.new("ImageLabel")
     imageLabel.Size = UDim2.new(1, 0, 1, 0)
     imageLabel.Position = UDim2.new(0, 0, 0, 0)
-    imageLabel.BackgroundTransparency = 1 -- Mantém transparente caso as imagens demorem
+    imageLabel.BackgroundTransparency = 1 
     imageLabel.ScaleType = Enum.ScaleType.Fit
+    -- Isso avisa o Roblox para NÃO mostrar a imagem toda, apenas o tamanho de 1 cena
+    imageLabel.ImageRectSize = Vector2.new(LARGURA_FRAME, ALTURA_FRAME)
     imageLabel.Parent = introGui
 
-    -- Tenta tocar o áudio de forma segura
     local getAsset = getcustomasset or getsynasset
     local som = Instance.new("Sound")
     som.Volume = 1
     som.Parent = SoundService
-
     pcall(function()
         if getAsset and isfile and isfile("Hapieblox/audio.m4a") then
             som.SoundId = getAsset("Hapieblox/audio.m4a")
@@ -91,27 +115,30 @@ local function tocarIntro()
         end
     end)
 
-    -- Execução baseada em tempo real
-    local tempoTotal = (som.TimeLength > 0) and som.TimeLength or (totalFrames / fps)
-    local inicio = tick()
-
-    while (tick() - inicio) < tempoTotal do
-        local tempoDecorrido = tick() - inicio
-        local frameAtual = math.clamp(math.floor(tempoDecorrido * fps) + 1, 1, totalFrames)
-        local assetIdAtual = spriteIDs[frameAtual]
-
-        if assetIdAtual then
-            imageLabel.Image = "rbxassetid://" .. tostring(assetIdAtual)
+    -- Motor da animação Spritesheet
+    task.spawn(function()
+        for i, sheetId in ipairs(spriteIDs) do
+            -- Carrega o spritesheet atual (usando o ID real)
+            imageLabel.Image = "rbxassetid://" .. tostring(sheetId)
+            
+            -- Faz o recorte percorrer a grade (Esquerda pra direita, cima pra baixo)
+            for frameAtual = 0, FRAMES_POR_SHEET - 1 do
+                local coluna = frameAtual % COLUNAS
+                local linha = math.floor(frameAtual / COLUNAS)
+                
+                -- Move a "câmera" para o quadro exato da cena
+                imageLabel.ImageRectOffset = Vector2.new(coluna * LARGURA_FRAME, linha * ALTURA_FRAME)
+                
+                -- Espera o tempo exato de 1 frame antes de ir pro próximo
+                task.wait(1 / FPS)
+            end
         end
-
-        RunService.RenderStepped:Wait()
-    end
-
-    pcall(function() som:Destroy() end)
-    introGui:Destroy()
+        -- Quando terminar todos os 38 sheets, fecha a intro
+        pcall(function() som:Destroy() end)
+        introGui:Destroy()
+    end)
 end
 
--- Toca a introdução antes de carregar os painéis
 tocarIntro()
 
 -- ==========================================
@@ -168,22 +195,17 @@ btnScanner.TextColor3 = Color3.fromRGB(255, 255, 255)
 btnScanner.Font = Enum.Font.GothamBold
 btnScanner.TextSize = 14
 btnScanner.Parent = janela
-
-local canto = Instance.new("UICorner")
-canto.CornerRadius = UDim.new(0, 6)
-canto.Parent = btnScanner
+local canto = Instance.new("UICorner"); canto.CornerRadius = UDim.new(0, 6); canto.Parent = btnScanner
 
 btnScanner.MouseButton1Click:Connect(function()
     btnScanner.Text = "⏳ Baixando..."
-    pcall(function()
-        loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))()
-    end)
+    pcall(function() loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))() end)
     task.wait(1)
     btnScanner.Text = "🔍 Executar Economy Scanner"
 end)
 
 -- ==========================================
--- CRIANDO O ÍCONE FLUTUANTE (TOGGLE)
+-- ÍCONE FLUTUANTE 
 -- ==========================================
 local toggleGui = Instance.new("ScreenGui")
 toggleGui.Name = "HapiebloxToggle"
@@ -195,22 +217,19 @@ iconeBotao.Size = UDim2.new(0, 50, 0, 50)
 iconeBotao.Position = UDim2.new(0, 20, 0.5, -25)
 iconeBotao.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 iconeBotao.Image = "rbxassetid://" .. tostring(spriteIDs[1])
+iconeBotao.ImageRectSize = Vector2.new(LARGURA_FRAME, ALTURA_FRAME)
+iconeBotao.ImageRectOffset = Vector2.new(0, 0) -- Pega a primeira cena para servir de logo
 iconeBotao.Active = true
 iconeBotao.Draggable = true
 iconeBotao.Parent = toggleGui
 
-local cantoIcone = Instance.new("UICorner")
-cantoIcone.CornerRadius = UDim.new(1, 0)
-cantoIcone.Parent = iconeBotao
-
-iconeBotao.MouseButton1Click:Connect(function()
-    if janela then janela.Visible = not janela.Visible end
-end)
+local cantoIcone = Instance.new("UICorner"); cantoIcone.CornerRadius = UDim.new(1, 0); cantoIcone.Parent = iconeBotao
+iconeBotao.MouseButton1Click:Connect(function() if janela then janela.Visible = not janela.Visible end end)
 
 janela.Visible = true
 
 -- ==========================================
--- SISTEMA DE AUTO-UPDATE VIA JSON
+-- AUTO-UPDATE
 -- ==========================================
 task.spawn(function()
     while tela and tela.Parent do
@@ -218,17 +237,11 @@ task.spawn(function()
         pcall(function()
             local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))
             local data = HttpService:JSONDecode(req)
-
             if data and data.version and data.version ~= currentVersion then
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "🔥 Update Automático",
-                    Text = "Nova versão encontrada (" .. data.version .. ").",
-                    Duration = 4
-                })
+                game:GetService("StarterGui"):SetCore("SendNotification", {Title="🔥 Update", Text="Nova versão!", Duration=4})
                 task.wait(1)
                 limparTudo()
-                local novoMain = game:HttpGet(rawMainUrl .. "?t=" .. tostring(tick()))
-                loadstring(novoMain)()
+                loadstring(game:HttpGet(rawMainUrl .. "?t=" .. tostring(tick())))()
             end
         end)
     end
