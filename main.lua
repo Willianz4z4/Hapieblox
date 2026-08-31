@@ -37,47 +37,25 @@ end
 limparTudo()
 
 -- ==========================================
--- LISTA DE IDs DAS SPRITESHEETS UPLOADADAS
+-- LISTA DE IDs DAS SPRITESHEETS (1 a 16)
 -- ==========================================
 local spriteIDs = {
-    139349696541931, -- spritesheet1.png
-    111523477811568, -- spritesheet2.png
-    85258839538040,  -- spritesheet3.png
-    127483555788732, -- spritesheet4.png
-    70915471988634,  -- spritesheet5.png
-    128758939717944, -- spritesheet6.png
-    72523310652887,  -- spritesheet7.png
-    124058281780048, -- spritesheet8.png
-    138119397330494, -- spritesheet9.png
-    122163477446613, -- spritesheet10.png
-    82280085604273,  -- spritesheet11.png
-    80348263108355,  -- spritesheet12.png
-    134514682100114, -- spritesheet13.png
-    89018115180544,  -- spritesheet14.png
-    112333313549305, -- spritesheet15.png
-    126959929483189, -- spritesheet16.png
-    84040978100909,  -- spritesheet17.png
-    124452156229953, -- spritesheet18.png
-    77661189591036,  -- spritesheet19.png
-    86102383957430,  -- spritesheet20.png
-    124870103496816, -- spritesheet21.png
-    82749324050197,  -- spritesheet22.png
-    113882981598187, -- spritesheet23.png
-    133116916215469, -- spritesheet24.png
-    131673118778630, -- spritesheet25.png
-    116954406392539, -- spritesheet26.png
-    116104262751152, -- spritesheet27.png
-    135163344291107, -- spritesheet28.png
-    92676508844478,  -- spritesheet29.png
-    113425610443135, -- spritesheet30.png
-    77296919376959,  -- spritesheet31.png
-    71517867804409,  -- spritesheet32.png
-    87879480755296,  -- spritesheet33.png
-    72325447414055,  -- spritesheet34.png
-    109982090465760, -- spritesheet35.png
-    113748010362844, -- spritesheet36.png
-    82569011892630,  -- spritesheet37.png
-    97869238274347   -- spritesheet38.png
+    124445268552489, -- spritesheet1.png
+    87795808448354,  -- spritesheet2.png
+    112554054774554, -- spritesheet3.png
+    106337465271290, -- spritesheet4.png
+    95878461796233,  -- spritesheet5.png
+    80462860316566,  -- spritesheet6.png
+    73198481477967,  -- spritesheet7.png
+    114599949245557, -- spritesheet8.png
+    135419241637584, -- spritesheet9.png
+    77477960427023,  -- spritesheet10.png
+    121392541420068, -- spritesheet11.png
+    111490992938234, -- spritesheet12.png
+    130032484238641, -- spritesheet13.png
+    108390304734606, -- spritesheet14.png
+    96280898565299,  -- spritesheet15.png
+    124448032038901  -- spritesheet16.png
 }
 
 -- ==========================================
@@ -151,7 +129,7 @@ janela.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 janela.Active = true
 janela.Draggable = true
 janela.Parent = tela
-janela.Visible = false -- Começa oculto até terminar a intro ou ser clicado no ícone
+janela.Visible = false
 
 local titulo = Instance.new("TextLabel")
 titulo.Size = UDim2.new(1, -40, 0, 40)
@@ -172,7 +150,6 @@ btnFechar.TextColor3 = Color3.new(1, 1, 1)
 btnFechar.Font = Enum.Font.GothamBold
 btnFechar.TextSize = 16
 btnFechar.Parent = janela
--- Agora o botão X apenas esconde a janela em vez de destruir, para o ícone poder abrir de novo
 btnFechar.MouseButton1Click:Connect(function() janela.Visible = false end)
 
 local linha = Instance.new("Frame")
@@ -215,26 +192,21 @@ toggleGui.Parent = guiParent
 
 local iconeBotao = Instance.new("ImageButton")
 iconeBotao.Size = UDim2.new(0, 50, 0, 50)
-iconeBotao.Position = UDim2.new(0, 20, 0.5, -25) -- Posição inicial (centro-esquerda)
+iconeBotao.Position = UDim2.new(0, 20, 0.5, -25)
 iconeBotao.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
--- Puxa o frame 1 da sua lista de sprites como logo
 iconeBotao.Image = "rbxassetid://" .. tostring(spriteIDs[1])
 iconeBotao.Active = true
-iconeBotao.Draggable = true -- Permite arrastar o ícone pela tela!
+iconeBotao.Draggable = true
 iconeBotao.Parent = toggleGui
 
 local cantoIcone = Instance.new("UICorner")
-cantoIcone.CornerRadius = UDim.new(1, 0) -- Deixa o ícone totalmente redondo
+cantoIcone.CornerRadius = UDim.new(1, 0)
 cantoIcone.Parent = iconeBotao
 
 iconeBotao.MouseButton1Click:Connect(function()
-    -- Alterna entre abrir e fechar a janela principal
-    if janela then
-        janela.Visible = not janela.Visible
-    end
+    if janela then janela.Visible = not janela.Visible end
 end)
 
--- Mostra o painel logo que a intro acabar e o código chegar aqui
 janela.Visible = true
 
 -- ==========================================
@@ -250,7 +222,7 @@ task.spawn(function()
             if data and data.version and data.version ~= currentVersion then
                 game:GetService("StarterGui"):SetCore("SendNotification", {
                     Title = "🔥 Update Automático",
-                    Text = "Nova versão encontrada (" .. data.version .. "). Atualizando de forma bruta!",
+                    Text = "Nova versão encontrada (" .. data.version .. ").",
                     Duration = 4
                 })
                 task.wait(1)
