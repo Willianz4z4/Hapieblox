@@ -1,8 +1,7 @@
 local HttpService = game:GetService("HttpService")                 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")                   
-local SoundService = game:GetService("SoundService")
-local ContentProvider = game:GetService("ContentProvider")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService") -- ADICIONADO PARA ANIMAÇÕES SUAVES
 
 local LocalPlayer = Players.LocalPlayer                            
 local versionUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/version.json"
@@ -11,14 +10,11 @@ local rawScannerUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/m
                                                                    
 local currentVersion = "1.0.0"
 
-print("[Hapieblox] Iniciando script. Verificando versão...")
-
 pcall(function()                                                       
     local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))                                                                     
     local data = HttpService:JSONDecode(req)
     if data and data.version then 
         currentVersion = data.version 
-        print("[Hapieblox] Versão atual: " .. currentVersion)
     end
 end)                                                               
 
@@ -29,7 +25,6 @@ end)
 if not guiParent then guiParent = LocalPlayer:WaitForChild("PlayerGui") end
 
 local function limparTudo()
-    print("[Hapieblox] Limpando GUIs antigas...")
     if guiParent:FindFirstChild("HapiebloxPanel") then guiParent.HapiebloxPanel:Destroy() end
     if guiParent:FindFirstChild("HapiebloxIntro") then guiParent.HapiebloxIntro:Destroy() end
     if guiParent:FindFirstChild("HapiebloxToggle") then guiParent.HapiebloxToggle:Destroy() end
@@ -39,143 +34,129 @@ end
 limparTudo()
 
 -- ==========================================
--- TABELA MAPEADA AUTOMATICAMENTE (5x5 - 480x270)
--- ==========================================
-local spriteIDs = {
-    { id = 124445268552489, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 87795808448354, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 112554054774554, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 106337465271290, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 95878461796233, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 80462860316566, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 73198481477967, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 114599949245557, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 135419241637584, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 77477960427023, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 121392541420068, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 111490992938234, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 130032484238641, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 108390304734606, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 96280898565299, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 124448032038901, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 94806513757824, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 89539141336426, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 112618750732962, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 135510278591208, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 124703980687330, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 84338389302969, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 70686782719636, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 108358169389684, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 95973579565028, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 87055093825723, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 93662533123963, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 86136436406432, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 100661827918735, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 106579723665619, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 92012869671079, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 84305418673666, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 92367395730576, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 114466099524303, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 104297138771132, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 73683396288823, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 118772178091802, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 },
-    { id = 116859081210984, col = 5, row = 5, fw = 480, fh = 270, maxFrames = 25 }
-}
-
--- ==========================================
--- MOTOR DE REPRODUÇÃO DA INTRO
+-- MOTOR DE INTRODUÇÃO RECRIADO COM GUI (SEM IMAGENS)
 -- ==========================================
 local function tocarIntro(aoTerminar)
-    print("[Hapieblox] Iniciando função tocarIntro()...")
-    
     if guiParent:FindFirstChild("HapiebloxIntro") then
         guiParent.HapiebloxIntro:Destroy()
     end
 
+    -- Cria a tela da Intro
     local introGui = Instance.new("ScreenGui")
     introGui.Name = "HapiebloxIntro"
     introGui.ResetOnSpawn = false
     introGui.IgnoreGuiInset = true
     introGui.Parent = guiParent
 
-    local imageLabel = Instance.new("ImageLabel")
-    imageLabel.Size = UDim2.new(1, 0, 1, 0)
-    imageLabel.Position = UDim2.new(0, 0, 0, 0)
-    imageLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0) 
-    imageLabel.BackgroundTransparency = 0 
-    imageLabel.ScaleType = Enum.ScaleType.Fit
-    imageLabel.Parent = introGui
+    -- Fundo branco puro
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Color3.fromRGB(245, 245, 245) -- Branco meio "papel"
+    bg.Parent = introGui
 
-    local loadingText = Instance.new("TextLabel")
-    loadingText.Size = UDim2.new(1, 0, 1, 0)
-    loadingText.BackgroundTransparency = 1
-    loadingText.Text = "Carregando Animação..."
-    loadingText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    loadingText.Font = Enum.Font.GothamBold
-    loadingText.TextSize = 20
-    loadingText.Parent = introGui
+    -- Container central para organizar os elementos
+    local center = Instance.new("Frame")
+    center.Size = UDim2.new(0, 500, 0, 150)
+    center.Position = UDim2.new(0.5, -250, 0.5, -75)
+    center.BackgroundTransparency = 1
+    center.Parent = bg
 
+    -- Texto principal da Intro
+    local textoPrincipal = Instance.new("TextLabel")
+    textoPrincipal.Size = UDim2.new(1, 0, 1, 0)
+    textoPrincipal.BackgroundTransparency = 1
+    textoPrincipal.Font = Enum.Font.GothamBlack -- Fonte gordinha parecida com a do video
+    textoPrincipal.TextSize = 50
+    textoPrincipal.TextColor3 = Color3.fromRGB(15, 15, 15)
+    textoPrincipal.Text = ""
+    textoPrincipal.TextXAlignment = Enum.TextXAlignment.Center
+    textoPrincipal.Parent = center
+
+    -- Script de animação puramente via código
     task.spawn(function()
-        print("[Hapieblox] Preparando Preload de " .. #spriteIDs .. " spritesheets...")
-        local imagensParaCarregar = {}
-        for _, sheet in ipairs(spriteIDs) do
-            local tempImg = Instance.new("ImageLabel")
-            tempImg.Image = "rbxassetid://" .. tostring(sheet.id)
-            table.insert(imagensParaCarregar, tempImg)
-        end
+        local textoReal = "HapieBlox Script"
         
-        local success, err = pcall(function()
-            local startTime = tick()
-            print("[Hapieblox] Baixando imagens (ContentProvider)...")
-            ContentProvider:PreloadAsync(imagensParaCarregar)
-            print("[Hapieblox] Preload concluído em " .. string.format("%.2f", tick() - startTime) .. " segundos.")
-        end)
-        
-        if not success then
-            warn("[Hapieblox] Erro durante o Preload das imagens: " .. tostring(err))
-        end
-        
-        loadingText:Destroy()
-        imageLabel.BackgroundTransparency = 1
+        -- 1. Efeito do Cursor piscando antes de digitar
+        task.wait(0.5)
+        textoPrincipal.Text = "|"
+        task.wait(0.4)
+        textoPrincipal.Text = ""
+        task.wait(0.3)
+        textoPrincipal.Text = "|"
+        task.wait(0.4)
 
-        print("[Hapieblox] Tentando carregar áudio...")
-        local getAsset = getcustomasset or getsynasset
-        local som = Instance.new("Sound")
-        som.Volume = 1
-        som.Parent = SoundService
-        pcall(function()
-            if getAsset and isfile and isfile("Hapieblox/audio.m4a") then
-                som.SoundId = getAsset("Hapieblox/audio.m4a")
-                som:Play()
-                print("[Hapieblox] Áudio carregado e reproduzindo.")
-            else
-                warn("[Hapieblox] Áudio não encontrado em Hapieblox/audio.m4a ou executor não suporta getcustomasset.")
+        -- 2. Efeito de Digitação Realista
+        for i = 1, #textoReal do
+            -- Pega letra por letra e adiciona o cursor na frente
+            textoPrincipal.Text = string.sub(textoReal, 1, i) .. "|"
+            -- Tempo aleatório para parecer que alguém está digitando de verdade
+            task.wait(math.random(4, 9) / 100) 
+        end
+        
+        -- Cursor pisca no final depois de escrever tudo
+        for i = 1, 2 do
+            textoPrincipal.Text = textoReal
+            task.wait(0.3)
+            textoPrincipal.Text = textoReal .. "|"
+            task.wait(0.3)
+        end
+        textoPrincipal.Text = textoReal -- Remove o cursor no final
+
+        -- 3. O "Impacto" / "Glitch" (Tremida na tela)
+        local posOriginal = center.Position
+        for i = 1, 8 do
+            center.Position = posOriginal + UDim2.new(0, math.random(-8, 8), 0, math.random(-8, 8))
+            bg.BackgroundColor3 = i % 2 == 0 and Color3.fromRGB(220, 220, 220) or Color3.fromRGB(255, 255, 255)
+            task.wait(0.02)
+        end
+        center.Position = posOriginal
+        bg.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+
+        -- 4. Função criadora dos "Doodles" (as carinhas em volta)
+        local function criarDoodle(emoji, pos, rotacao, tamanhoFinal)
+            local lbl = Instance.new("TextLabel")
+            lbl.BackgroundTransparency = 1
+            lbl.Text = emoji
+            lbl.TextSize = 0 -- Nasce invisivel/pequeno
+            lbl.Rotation = rotacao
+            lbl.Position = pos
+            lbl.Font = Enum.Font.GothamBold
+            lbl.TextColor3 = Color3.fromRGB(30, 30, 30)
+            lbl.Parent = center
+
+            -- Tween faz ele "pular" e estourar no tamanho real
+            local tweenInfo = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+            TweenService:Create(lbl, tweenInfo, {TextSize = tamanhoFinal}):Play()
+        end
+
+        -- Cria as decorações em volta do texto (simulando os desenhos do video)
+        criarDoodle("😉", UDim2.new(0.9, -10, 0.4, 0), 15, 45) -- Rosto piscando lado direito
+        criarDoodle("👁️", UDim2.new(0.85, 0, -0.1, 0), -10, 40) -- Olho em cima
+        criarDoodle("✨", UDim2.new(0.1, 0, 0.1, 0), -20, 35) -- Estrelas/Risco lado esquerdo
+        criarDoodle("~", UDim2.new(0.2, 0, 0.8, 0), 10, 50) -- Risquinho embaxo
+        criarDoodle("{", UDim2.new(0.05, 0, 0.6, 0), 0, 40) -- Chaves na esquerda
+        criarDoodle("💥", UDim2.new(0.95, 0, 0.8, 0), -15, 30) -- Explosão pequena direita
+
+        task.wait(2) -- Tempo mostrando os desenhos
+
+        -- 5. Transição / Fade out de tudo (dissolver)
+        local fadeBg = TweenService:Create(bg, TweenInfo.new(0.6), {BackgroundTransparency = 1})
+        fadeBg:Play()
+
+        for _, obj in ipairs(center:GetChildren()) do
+            if obj:IsA("TextLabel") then
+                TweenService:Create(obj, TweenInfo.new(0.4), {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
             end
-        end)
-
-        print("[Hapieblox] Reproduzindo animação...")
-        for idx, sheet in ipairs(spriteIDs) do
-            imageLabel.Image = "rbxassetid://" .. tostring(sheet.id)
-            imageLabel.ImageRectSize = Vector2.new(sheet.fw, sheet.fh)
-
-            for frame = 0, sheet.maxFrames - 1 do
-                local col = frame % sheet.col
-                local row = math.floor(frame / sheet.col)
-                imageLabel.ImageRectOffset = Vector2.new(col * sheet.fw, row * sheet.fh)
-                task.wait(1 / 24)
-            end
         end
+
+        task.wait(0.6)
         
-        print("[Hapieblox] Animação finalizada.")
-        print("[Hapieblox] DICA: Se a tela ficou invisível, verifique se os IDs são de IMAGEM e não de DECAL.")
-        
-        pcall(function() som:Destroy() end)
         introGui:Destroy()
         if aoTerminar then aoTerminar() end
     end)
 end
 
--- Toca a intro na inicialização
+-- Toca a intro na inicialização do Hub
 tocarIntro()
 
 -- ==========================================
@@ -214,10 +195,7 @@ btnFechar.TextColor3 = Color3.new(1, 1, 1)
 btnFechar.Font = Enum.Font.GothamBold
 btnFechar.TextSize = 16
 btnFechar.Parent = janela
-btnFechar.MouseButton1Click:Connect(function() 
-    print("[Hapieblox] Janela fechada.")
-    janela.Visible = false 
-end)
+btnFechar.MouseButton1Click:Connect(function() janela.Visible = false end)
 
 local linha = Instance.new("Frame")
 linha.Size = UDim2.new(1, 0, 0, 2)
@@ -239,12 +217,10 @@ btnScanner.Parent = janela
 local canto1 = Instance.new("UICorner"); canto1.CornerRadius = UDim.new(0, 6); canto1.Parent = btnScanner
 
 btnScanner.MouseButton1Click:Connect(function()
-    print("[Hapieblox] Botão Scanner clicado. Baixando script...")
     btnScanner.Text = "⏳ Baixando..."
     pcall(function() loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))() end)
     task.wait(1)
     btnScanner.Text = "🔍 Executar Economy Scanner"
-    print("[Hapieblox] Script Scanner executado.")
 end)
 
 -- NOVO BOTÃO: Testar Animação Novamente
@@ -260,11 +236,9 @@ btnAnimacao.Parent = janela
 local canto2 = Instance.new("UICorner"); canto2.CornerRadius = UDim.new(0, 6); canto2.Parent = btnAnimacao
 
 btnAnimacao.MouseButton1Click:Connect(function()
-    print("[Hapieblox] Re-executando intro manualmente.")
     janela.Visible = false
     tocarIntro(function()
         janela.Visible = true
-        print("[Hapieblox] Intro concluída, reabrindo janela principal.")
     end)
 end)
 
@@ -276,37 +250,31 @@ toggleGui.Name = "HapiebloxToggle"
 toggleGui.ResetOnSpawn = false
 toggleGui.Parent = guiParent
 
-local iconeBotao = Instance.new("ImageButton")
+local iconeBotao = Instance.new("TextButton")
 iconeBotao.Size = UDim2.new(0, 50, 0, 50)
 iconeBotao.Position = UDim2.new(0, 20, 0.5, -25)
 iconeBotao.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-iconeBotao.Image = "rbxassetid://" .. tostring(spriteIDs[1].id)
-iconeBotao.ImageRectSize = Vector2.new(spriteIDs[1].fw, spriteIDs[1].fh)
-iconeBotao.ImageRectOffset = Vector2.new(0, 0)
+iconeBotao.Text = "HB"
+iconeBotao.TextColor3 = Color3.new(1, 1, 1)
+iconeBotao.Font = Enum.Font.GothamBlack
+iconeBotao.TextSize = 18
 iconeBotao.Active = true
 iconeBotao.Draggable = true
 iconeBotao.Parent = toggleGui
 
 local cantoIcone = Instance.new("UICorner"); cantoIcone.CornerRadius = UDim.new(1, 0); cantoIcone.Parent = iconeBotao
-iconeBotao.MouseButton1Click:Connect(function() 
-    if janela then 
-        janela.Visible = not janela.Visible 
-        print("[Hapieblox] Alternando visibilidade da janela: " .. tostring(janela.Visible))
-    end 
-end)
+iconeBotao.MouseButton1Click:Connect(function() if janela then janela.Visible = not janela.Visible end end)
 
 -- ==========================================
 -- AUTO-UPDATE
 -- ==========================================
 task.spawn(function()
-    print("[Hapieblox] Serviço de Auto-Update iniciado.")
     while tela and tela.Parent do
         task.wait(15)
         pcall(function()
             local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))
             local data = HttpService:JSONDecode(req)
             if data and data.version and data.version ~= currentVersion then
-                print("[Hapieblox] Atualização detectada! " .. currentVersion .. " -> " .. data.version)
                 game:GetService("StarterGui"):SetCore("SendNotification", {Title="🔥 Update", Text="Nova versão!", Duration=4})
                 task.wait(1)
                 limparTudo()
