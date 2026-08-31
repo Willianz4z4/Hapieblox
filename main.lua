@@ -1,6 +1,7 @@
 local HttpService = game:GetService("HttpService")                 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService") 
+local SoundService = game:GetService("SoundService")
 
 local LocalPlayer = Players.LocalPlayer                            
 local versionUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/version.json"
@@ -31,7 +32,7 @@ end
 limparTudo()
 
 -- ==========================================
--- MOTOR DE INTRODUÇÃO AVANÇADO (FUNDO TRANSPARENTE)
+-- MOTOR DE INTRODUÇÃO V3.0 (FOFA, PARTÍCULAS E ÁUDIO)
 -- ==========================================
 local function tocarIntro(aoTerminar)
     if guiParent:FindFirstChild("HapiebloxIntro") then
@@ -44,102 +45,169 @@ local function tocarIntro(aoTerminar)
     introGui.IgnoreGuiInset = true
     introGui.Parent = guiParent
 
-    -- Container Centralizado (Fundo 100% Transparente)
+    -- Áudio Sincronizado
+    local sfx = Instance.new("Sound")
+    sfx.SoundId = "rbxassetid://92988767341384"
+    sfx.Volume = 2
+    sfx.Parent = SoundService
+    sfx:Play()
+
+    -- Container Central
     local center = Instance.new("Frame")
     center.Size = UDim2.new(0, 600, 0, 200)
-    center.AnchorPoint = Vector2.new(0.5, 0.5) -- Centralização Perfeita (Coisa boa do Lua)
+    center.AnchorPoint = Vector2.new(0.5, 0.5)
     center.Position = UDim2.new(0.5, 0, 0.5, 0)
     center.BackgroundTransparency = 1
     center.Parent = introGui
 
-    -- Texto Principal
-    local textoPrincipal = Instance.new("TextLabel")
-    textoPrincipal.Size = UDim2.new(1, 0, 1, 0)
-    textoPrincipal.BackgroundTransparency = 1
-    textoPrincipal.Font = Enum.Font.GothamBlack
-    textoPrincipal.TextSize = 65
-    textoPrincipal.TextColor3 = Color3.fromRGB(15, 15, 15) -- Quase preto
-    textoPrincipal.Text = ""
-    textoPrincipal.Parent = center
+    -- Brilho fofo no fundo
+    local brilho = Instance.new("ImageLabel")
+    brilho.Image = "rbxassetid://1319266157" -- Textura de Glow
+    brilho.Size = UDim2.new(0, 0, 0, 0)
+    brilho.Position = UDim2.new(0.5, 0, 0.5, 0)
+    brilho.AnchorPoint = Vector2.new(0.5, 0.5)
+    brilho.BackgroundTransparency = 1
+    brilho.ImageColor3 = Color3.fromRGB(255, 180, 220) -- Rosa claro mágico
+    brilho.ImageTransparency = 1
+    brilho.Parent = center
 
-    -- Borda branca forte para o texto aparecer em qualquer fundo de jogo
-    local strokeTexto = Instance.new("UIStroke")
-    strokeTexto.Color = Color3.fromRGB(255, 255, 255)
-    strokeTexto.Thickness = 4
-    strokeTexto.LineJoinMode = Enum.LineJoinMode.Round
-    strokeTexto.Parent = textoPrincipal
+    -- Container para as letras pulantes
+    local textContainer = Instance.new("Frame")
+    textContainer.Size = UDim2.new(1, 0, 1, 0)
+    textContainer.BackgroundTransparency = 1
+    textContainer.Parent = center
+
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.VerticalAlignment = Enum.VerticalAlignment.Center
+    layout.Padding = UDim.new(0, 2)
+    layout.Parent = textContainer
 
     task.spawn(function()
+        task.wait(0.3) -- Pausa estratégica para bater o visual com o áudio
+
+        -- Expande o brilho
+        TweenService:Create(brilho, TweenInfo.new(1.5, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 800, 0, 800),
+            ImageTransparency = 0.5
+        }):Play()
+
+        -- Sistema de Partículas saindo do chão
+        for i = 1, 25 do
+            task.spawn(function()
+                local part = Instance.new("Frame")
+                local pSize = math.random(6, 16)
+                part.Size = UDim2.new(0, pSize, 0, pSize)
+                -- Nascem lá no fundo (Y = 1.2)
+                part.Position = UDim2.new(math.random(10, 90)/100, 0, 1.2, 0)
+                part.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(1, 0); corner.Parent = part
+                part.Parent = introGui
+                
+                -- Sobe, vira pra os lados e some
+                local tInfo = TweenInfo.new(math.random(15, 30)/10, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+                local tw = TweenService:Create(part, tInfo, {
+                    Position = UDim2.new(part.Position.X.Scale + (math.random(-10, 10)/100), 0, math.random(20, 60)/100, 0),
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(0, 0, 0, 0)
+                })
+                tw:Play()
+                tw.Completed:Connect(function() part:Destroy() end)
+            end)
+            task.wait(0.01)
+        end
+
+        -- Criação das Letras que Pulam (Bounce)
         local textoReal = "HapieBlox Script"
-        
-        -- Cursor piscando
-        for i = 1, 2 do
-            textoPrincipal.Text = "|"
-            task.wait(0.3)
-            textoPrincipal.Text = ""
-            task.wait(0.3)
-        end
-
-        -- Digitação fluida
         for i = 1, #textoReal do
-            textoPrincipal.Text = string.sub(textoReal, 1, i) .. "|"
-            task.wait(math.random(3, 8) / 100) 
+            local char = string.sub(textoReal, i, i)
+            
+            -- Caixa protetora da letra
+            local charWrap = Instance.new("Frame")
+            charWrap.Size = char == " " and UDim2.new(0, 20, 0, 80) or UDim2.new(0, 42, 0, 80)
+            charWrap.BackgroundTransparency = 1
+            charWrap.Parent = textContainer
+
+            if char ~= " " then
+                local lbl = Instance.new("TextLabel")
+                lbl.Text = char
+                lbl.Size = UDim2.new(1, 0, 1, 0)
+                lbl.Position = UDim2.new(0, 0, 0.8, 0) -- Nasce caida
+                lbl.BackgroundTransparency = 1
+                lbl.Font = Enum.Font.GothamBlack
+                lbl.TextSize = 0 -- Nasce invisivel
+                lbl.TextColor3 = Color3.fromRGB(25, 25, 30)
+                lbl.Parent = charWrap
+
+                local str = Instance.new("UIStroke")
+                str.Color = Color3.fromRGB(255, 255, 255)
+                str.Thickness = 4
+                str.Parent = lbl
+
+                task.spawn(function()
+                    local tInfo = TweenInfo.new(0.6, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
+                    TweenService:Create(lbl, tInfo, {
+                        TextSize = 65,
+                        Position = UDim2.new(0, 0, 0, 0) -- Pula para a posição normal
+                    }):Play()
+                end)
+            end
+            task.wait(0.04) -- Efeito de digitação/cascata rápida
         end
-        textoPrincipal.Text = textoReal
 
-        -- Efeito Impacto (Tween elástico no TextSize)
-        local sizeOriginal = textoPrincipal.TextSize
-        TweenService:Create(textoPrincipal, TweenInfo.new(0.1, Enum.EasingStyle.Sine), {TextSize = sizeOriginal + 10}):Play()
-        task.wait(0.1)
-        TweenService:Create(textoPrincipal, TweenInfo.new(0.4, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {TextSize = sizeOriginal}):Play()
-
-        -- Função Criadora de Doodles Animados
+        -- Função para os Emojis Fofos
         local function criarDoodle(emoji, pos, rotacao, tamanhoFinal, delayAparecer)
-            -- task.delay executa sem travar o resto do script
             task.delay(delayAparecer, function()
                 local lbl = Instance.new("TextLabel")
                 lbl.BackgroundTransparency = 1
                 lbl.Text = emoji
                 lbl.TextSize = 0
-                lbl.Rotation = rotacao - 60 -- Nasce girado pra dar efeito de rotação ao crescer
+                lbl.Rotation = rotacao - 60 
                 lbl.Position = pos
                 lbl.Font = Enum.Font.GothamBold
-                lbl.TextColor3 = Color3.fromRGB(20, 20, 20)
                 lbl.Parent = center
 
-                local stroke = Instance.new("UIStroke")
-                stroke.Color = Color3.fromRGB(255, 255, 255)
-                stroke.Thickness = 2.5
-                stroke.Parent = lbl
-                
-                -- Animação Elástica ("Quique")
-                local anim = TweenInfo.new(0.7, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
+                local anim = TweenInfo.new(0.8, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
                 TweenService:Create(lbl, anim, {TextSize = tamanhoFinal, Rotation = rotacao}):Play()
             end)
         end
 
-        -- Spawna os desenhos em cascata (efeito de "pop pop pop")
-        criarDoodle("😉", UDim2.new(0.85, 0, 0.25, 0), 15, 60, 0.0)
-        criarDoodle("👁️", UDim2.new(0.80, 0, -0.05, 0), -10, 50, 0.1)
-        criarDoodle("✨", UDim2.new(0.15, 0, 0.2, 0), -20, 45, 0.2)
-        criarDoodle("~", UDim2.new(0.25, 0, 0.8, 0), 10, 70, 0.3)
-        criarDoodle("{", UDim2.new(0.10, 0, 0.6, 0), 0, 55, 0.4)
-        criarDoodle("💥", UDim2.new(0.90, 0, 0.7, 0), -15, 45, 0.5)
+        -- Emojis fofos e brilhantes
+        criarDoodle("🌸", UDim2.new(0.9, 0, 0.25, 0), 15, 55, 0.2)
+        criarDoodle("💖", UDim2.new(0.85, 0, -0.05, 0), -10, 45, 0.3)
+        criarDoodle("☁️", UDim2.new(0.12, 0, 0.15, 0), -20, 60, 0.4)
+        criarDoodle("🎀", UDim2.new(0.20, 0, 0.8, 0), 10, 50, 0.5)
+        criarDoodle("🧸", UDim2.new(0.08, 0, 0.55, 0), 5, 45, 0.6)
+        criarDoodle("✨", UDim2.new(0.88, 0, 0.75, 0), -15, 50, 0.7)
 
-        task.wait(2.2)
+        task.wait(2.8) -- Tempo que a arte fica na tela
 
-        -- Fade Out ultra suave usando Tween
-        local fadeInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        for _, obj in ipairs(center:GetChildren()) do
-            if obj:IsA("TextLabel") then
-                TweenService:Create(obj, fadeInfo, {TextTransparency = 1}):Play()
-                if obj:FindFirstChild("UIStroke") then
-                    TweenService:Create(obj.UIStroke, fadeInfo, {Transparency = 1}):Play()
+        -- Fade Out completo
+        local fadeInfo = TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+        TweenService:Create(brilho, fadeInfo, {ImageTransparency = 1, Size = UDim2.new(0, 1000, 0, 1000)}):Play()
+        
+        for _, wrap in ipairs(textContainer:GetChildren()) do
+            if wrap:IsA("Frame") then
+                for _, obj in ipairs(wrap:GetChildren()) do
+                    if obj:IsA("TextLabel") then
+                        TweenService:Create(obj, fadeInfo, {TextTransparency = 1, Position = UDim2.new(0, 0, -0.5, 0)}):Play()
+                        if obj:FindFirstChild("UIStroke") then
+                            TweenService:Create(obj.UIStroke, fadeInfo, {Transparency = 1}):Play()
+                        end
+                    end
                 end
             end
         end
 
+        for _, obj in ipairs(center:GetChildren()) do
+            if obj:IsA("TextLabel") then
+                TweenService:Create(obj, fadeInfo, {TextTransparency = 1, TextSize = 0}):Play()
+            end
+        end
+
         task.wait(0.6)
+        pcall(function() sfx:Destroy() end)
         introGui:Destroy()
         if aoTerminar then aoTerminar() end
     end)
