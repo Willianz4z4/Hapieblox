@@ -33,7 +33,23 @@ end
 limparTudo()
 
 -- ==========================================
--- SISTEMA DE OCULTAR/REVELAR JOGADORES (FANTASMA)
+-- SISTEMA DE ÁUDIO GLOBAL
+-- ==========================================
+local function tocarSFX(id, vol, pitch)
+    task.spawn(function()
+        local snd = Instance.new("Sound")
+        snd.SoundId = "rbxassetid://" .. tostring(id)
+        snd.Volume = vol or 1
+        snd.PlaybackSpeed = pitch or 1
+        snd.Parent = SoundService
+        snd:Play()
+        snd.Ended:Wait()
+        snd:Destroy()
+    end)
+end
+
+-- ==========================================
+-- SISTEMA DE OCULTAR/REVELAR JOGADORES
 -- ==========================================
 local originalTransparencies = {}
 
@@ -61,21 +77,8 @@ local function revelarJogadores()
     end
 end
 
-local function tocarSFX(id, vol, pitch)
-    task.spawn(function()
-        local snd = Instance.new("Sound")
-        snd.SoundId = "rbxassetid://" .. tostring(id)
-        snd.Volume = vol or 1
-        snd.PlaybackSpeed = pitch or 1
-        snd.Parent = SoundService
-        snd:Play()
-        snd.Ended:Wait()
-        snd:Destroy()
-    end)
-end
-
 -- ==========================================
--- INTRO V11.0 (TECH, HACKER & SEM FOFURA)
+-- INTRO V12.0 (TECH, HACKER + NOVOS SFX)
 -- ==========================================
 local function tocarIntro(aoTerminar)
     if guiParent:FindFirstChild("HapiebloxIntro") then guiParent.HapiebloxIntro:Destroy() end
@@ -142,7 +145,7 @@ local function tocarIntro(aoTerminar)
     task.spawn(function()
         task.wait(0.3)
         pe1:Emit(300)
-        tocarSFX(134012322, 1.2, 1.3) 
+        tocarSFX(134012322, 1.2, 1.3) -- Som de sistema inicializando
 
         TweenService:Create(brilho, TweenInfo.new(0.8, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
             Size = UDim2.new(0, 700, 0, 700), ImageTransparency = 0.4
@@ -200,7 +203,7 @@ local function tocarIntro(aoTerminar)
                         TextSize = fontSize,
                         Position = UDim2.new(0, 0, 0, 0)
                     }):Play()
-                    tocarSFX(8777977699, 0.8, math.random(80, 140)/100)
+                    tocarSFX(8777977699, 0.8, math.random(80, 140)/100) -- Som de digitação variando tom
                 end)
             end
             task.wait(0.03)
@@ -219,7 +222,7 @@ local function tocarIntro(aoTerminar)
 
                 local anim = TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
                 TweenService:Create(lbl, anim, {TextSize = tamanhoFinal, Rotation = rotacao}):Play()
-                tocarSFX(2811444158, 0.5, 1.5) 
+                tocarSFX(2811444158, 0.5, 1.5) -- Som de pop digital
             end)
         end
 
@@ -232,6 +235,8 @@ local function tocarIntro(aoTerminar)
 
         task.wait(2.0)
         revelarJogadores()
+        
+        tocarSFX(300976136, 1, 1) -- Som de holograma desligando (Transição Sci-Fi)
 
         local fadeInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         TweenService:Create(brilho, fadeInfo, {ImageTransparency = 1, Size = UDim2.new(0, 800, 0, 800)}):Play()
@@ -282,6 +287,13 @@ janela.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 janela.Active = true; janela.Draggable = true
 janela.Parent = tela
 
+-- Adicionando som ao painel ficar visível
+janela:GetPropertyChangedSignal("Visible"):Connect(function()
+    if janela.Visible then
+        tocarSFX(2811444158, 0.6, 1.2) -- Som de UI tech abrindo
+    end
+end)
+
 local titulo = Instance.new("TextLabel")
 titulo.Size = UDim2.new(1, -40, 0, 40)
 titulo.BackgroundTransparency = 1
@@ -299,7 +311,9 @@ btnFechar.Text = "X"; btnFechar.TextColor3 = Color3.new(1, 1, 1)
 btnFechar.Font = Enum.Font.GothamBold; btnFechar.TextSize = 16
 btnFechar.Parent = janela
 
+btnFechar.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end) -- Hover
 btnFechar.MouseButton1Click:Connect(function()
+    tocarSFX(421058925, 0.5, 1) -- Click
     janela.Visible = false
 end)
 
@@ -319,7 +333,9 @@ btnScanner.Font = Enum.Font.GothamBold; btnScanner.TextSize = 14
 btnScanner.Parent = janela
 local c1 = Instance.new("UICorner"); c1.CornerRadius = UDim.new(0, 6); c1.Parent = btnScanner
 
+btnScanner.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end) -- Hover
 btnScanner.MouseButton1Click:Connect(function()
+    tocarSFX(421058925, 0.5, 1) -- Click
     btnScanner.Text = "⏳ Baixando..."
     pcall(function()
         loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))()
@@ -338,7 +354,9 @@ btnAnimacao.Font = Enum.Font.GothamBold; btnAnimacao.TextSize = 14
 btnAnimacao.Parent = janela
 local c2 = Instance.new("UICorner"); c2.CornerRadius = UDim.new(0, 6); c2.Parent = btnAnimacao
 
+btnAnimacao.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end) -- Hover
 btnAnimacao.MouseButton1Click:Connect(function()
+    tocarSFX(421058925, 0.5, 1) -- Click
     janela.Visible = false
     tocarIntro(function()
         janela.Visible = true
@@ -361,7 +379,9 @@ iconeBotao.Active = true; iconeBotao.Draggable = true
 iconeBotao.Parent = toggleGui
 local c3 = Instance.new("UICorner"); c3.CornerRadius = UDim.new(1, 0); c3.Parent = iconeBotao
 
+iconeBotao.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end) -- Hover
 iconeBotao.MouseButton1Click:Connect(function()
+    tocarSFX(421058925, 0.5, 1) -- Click
     if janela then janela.Visible = not janela.Visible end
 end)
 
@@ -372,8 +392,9 @@ task.spawn(function()
             local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))
             local data = HttpService:JSONDecode(req)
             if data and data.version and data.version ~= currentVersion then
-                game:GetService("StarterGui"):SetCore("SendNotification", {Title="🔥 Update", Text="Nova versão!", Duration=4})
-                task.wait(1)
+                tocarSFX(2865228021, 1, 1) -- Som de notificação de Update
+                game:GetService("StarterGui"):SetCore("SendNotification", {Title="🔥 Update", Text="Nova versão detectada! Atualizando...", Duration=4})
+                task.wait(1.5)
                 limparTudo()
                 loadstring(game:HttpGet(rawMainUrl .. "?t=" .. tostring(tick())))()
             end
