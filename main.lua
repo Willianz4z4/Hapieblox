@@ -33,6 +33,114 @@ end
 limparTudo()
 
 -- ==========================================
+-- SISTEMA DE MEMÓRIA & CONFIGURAÇÕES (JSON)
+-- ==========================================
+-- Removido o uso de pastas, salvando direto na raiz do workspace para compatibilidade com Delta
+local arqConfig = "Hapieblox_Config.json"
+local arqAutoLoad = "Hapieblox_AutoLoad.json"
+
+-- 1. GERENCIADOR DO ARQUIVO DE CONFIGURAÇÃO (Configuração Master)
+local function carregarConfig()
+    local padrao = { 
+        execucoes = 0, 
+        ultimaSessao = "Nunca", 
+        auto_loading = false, 
+        money_target = false 
+    }
+    
+    if isfile and readfile and pcall(function() isfile(arqConfig) end) and isfile(arqConfig) then
+        local sucesso, dados = pcall(function()
+            return HttpService:JSONDecode(readfile(arqConfig))
+        end)
+        if sucesso and dados then
+            for k, v in pairs(padrao) do
+                if dados[k] == nil then dados[k] = v end
+            end
+            return dados
+        end
+    end
+    return padrao
+end
+
+local function salvarConfig(dados)
+    if writefile then
+        pcall(function() writefile(arqConfig, HttpService:JSONEncode(dados)) end)
+    end
+end
+
+-- 2. GERENCIADOR DO AUTO-LOAD (Scripts Injetados)
+local function carregarAutoLoad()
+    local padrao = { ALL = {}, Games = {} }
+    
+    if isfile and readfile and pcall(function() isfile(arqAutoLoad) end) and isfile(arqAutoLoad) then
+        local sucesso, dados = pcall(function()
+            return HttpService:JSONDecode(readfile(arqAutoLoad))
+        end)
+        if sucesso and dados then
+            if not dados.ALL then dados.ALL = {} end
+            if not dados.Games then dados.Games = {} end
+            return dados
+        end
+    end
+    if writefile then pcall(function() writefile(arqAutoLoad, HttpService:JSONEncode(padrao)) end) end
+    return padrao
+end
+
+-- INICIALIZAÇÃO DA MEMÓRIA
+local config = carregarConfig()
+config.execucoes = config.execucoes + 1
+config.ultimaSessao = os.date("%d/%m/%Y %H:%M")
+salvarConfig(config)
+
+-- ==========================================
+-- SISTEMA DE AUTO-INJECT & TARGET BRIDGE
+-- ==========================================
+local function auto_inject()
+    if not config.auto_loading then return end
+    
+    local autoData = carregarAutoLoad()
+    local currentPlaceId = tostring(game.PlaceId)
+
+    for _, scriptCode in ipairs(autoData.ALL) do
+        task.spawn(function()
+            pcall(function() loadstring(scriptCode)() end)
+        end)
+    end
+
+    if autoData.Games[currentPlaceId] then
+        for _, scriptCode in ipairs(autoData.Games[currentPlaceId]) do
+            task.spawn(function()
+                pcall(function() loadstring(scriptCode)() end)
+            end)
+        end
+    end
+end
+
+task.spawn(auto_inject)
+
+if config.money_target then
+    task.spawn(function()
+        local http_request = (syn and syn.request) or (http and http.request) or request
+        if http_request then
+            while task.wait(10) do
+                pcall(function()
+                    local resposta = http_request({
+                        Url = "http://1.2.3.4:5000/check_task",
+                        Method = "GET"
+                    })
+                    if resposta.StatusCode == 200 then
+                        local taskData = HttpService:JSONDecode(resposta.Body)
+                        if taskData and taskData.action == "run_scanner" then
+                            loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))()
+                        end
+                    end
+                end)
+            end
+        end
+    end)
+end
+
+-- ==========================================
 -- SISTEMA DE ÁUDIO GLOBAL
 -- ==========================================
 local function tocarSFX(id, vol, pitch)
@@ -78,7 +186,7 @@ local function revelarJogadores()
 end
 
 -- ==========================================
--- INTRO V12.0 (TECH, HACKER + NOVOS SFX)
+-- INTRO V15.0 (TECH, HACKER + NOVOS SFX)
 -- ==========================================
 local function tocarIntro(aoTerminar)
     if guiParent:FindFirstChild("HapiebloxIntro") then guiParent.HapiebloxIntro:Destroy() end
@@ -145,7 +253,7 @@ local function tocarIntro(aoTerminar)
     task.spawn(function()
         task.wait(0.3)
         pe1:Emit(300)
-        tocarSFX(134012322, 1.2, 1.3) -- Som de sistema inicializando
+        tocarSFX(134012322, 1.2, 1.3) 
 
         TweenService:Create(brilho, TweenInfo.new(0.8, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
             Size = UDim2.new(0, 700, 0, 700), ImageTransparency = 0.4
@@ -203,7 +311,7 @@ local function tocarIntro(aoTerminar)
                         TextSize = fontSize,
                         Position = UDim2.new(0, 0, 0, 0)
                     }):Play()
-                    tocarSFX(8777977699, 0.8, math.random(80, 140)/100) -- Som de digitação variando tom
+                    tocarSFX(8777977699, 0.8, math.random(80, 140)/100) 
                 end)
             end
             task.wait(0.03)
@@ -222,7 +330,7 @@ local function tocarIntro(aoTerminar)
 
                 local anim = TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
                 TweenService:Create(lbl, anim, {TextSize = tamanhoFinal, Rotation = rotacao}):Play()
-                tocarSFX(2811444158, 0.5, 1.5) -- Som de pop digital
+                tocarSFX(2811444158, 0.5, 1.5) 
             end)
         end
 
@@ -236,7 +344,7 @@ local function tocarIntro(aoTerminar)
         task.wait(2.0)
         revelarJogadores()
         
-        tocarSFX(300976136, 1, 1) -- Som de holograma desligando (Transição Sci-Fi)
+        tocarSFX(300976136, 1, 1) 
 
         local fadeInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         TweenService:Create(brilho, fadeInfo, {ImageTransparency = 1, Size = UDim2.new(0, 800, 0, 800)}):Play()
@@ -270,134 +378,138 @@ local function tocarIntro(aoTerminar)
         if aoTerminar then aoTerminar() end
     end)
 end
-tocarIntro()
 
 -- ==========================================
--- PAINEL PRINCIPAL & BOTOES
+-- PORTA DO SCRIPT (PAINEL PRINCIPAL)
 -- ==========================================
-local tela = Instance.new("ScreenGui")
-tela.Name = "HapiebloxPanel"
-tela.ResetOnSpawn = false
-tela.Parent = guiParent
+local function iniciarScriptMenu()
+    local tela = Instance.new("ScreenGui")
+    tela.Name = "HapiebloxPanel"
+    tela.ResetOnSpawn = false
+    tela.Parent = guiParent
 
-local janela = Instance.new("Frame")
-janela.Size = UDim2.new(0, 350, 0, 280)
-janela.Position = UDim2.new(0.5, -175, 0.5, -140)
-janela.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-janela.Active = true; janela.Draggable = true
-janela.Parent = tela
+    local janela = Instance.new("Frame")
+    janela.Size = UDim2.new(0, 350, 0, 280)
+    janela.Position = UDim2.new(0.5, -175, 0.5, -140)
+    janela.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    janela.Active = true; janela.Draggable = true
+    janela.Parent = tela
 
--- Adicionando som ao painel ficar visível
-janela:GetPropertyChangedSignal("Visible"):Connect(function()
-    if janela.Visible then
-        tocarSFX(2811444158, 0.6, 1.2) -- Som de UI tech abrindo
-    end
-end)
-
-local titulo = Instance.new("TextLabel")
-titulo.Size = UDim2.new(1, -40, 0, 40)
-titulo.BackgroundTransparency = 1
-titulo.Text = " 🛠️ Hapieblox Hub | v" .. currentVersion
-titulo.TextColor3 = Color3.fromRGB(255, 255, 255)
-titulo.TextXAlignment = Enum.TextXAlignment.Left
-titulo.Font = Enum.Font.GothamBold; titulo.TextSize = 15
-titulo.Parent = janela
-
-local btnFechar = Instance.new("TextButton")
-btnFechar.Size = UDim2.new(0, 40, 0, 40)
-btnFechar.Position = UDim2.new(1, -40, 0, 0)
-btnFechar.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
-btnFechar.Text = "X"; btnFechar.TextColor3 = Color3.new(1, 1, 1)
-btnFechar.Font = Enum.Font.GothamBold; btnFechar.TextSize = 16
-btnFechar.Parent = janela
-
-btnFechar.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end) -- Hover
-btnFechar.MouseButton1Click:Connect(function()
-    tocarSFX(421058925, 0.5, 1) -- Click
-    janela.Visible = false
-end)
-
-local linha = Instance.new("Frame")
-linha.Size = UDim2.new(1, 0, 0, 2)
-linha.Position = UDim2.new(0, 0, 0, 40)
-linha.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-linha.BorderSizePixel = 0; linha.Parent = janela
-
-local btnScanner = Instance.new("TextButton")
-btnScanner.Size = UDim2.new(0.9, 0, 0, 45)
-btnScanner.Position = UDim2.new(0.05, 0, 0, 60)
-btnScanner.BackgroundColor3 = Color3.fromRGB(40, 120, 255)
-btnScanner.Text = "🔍 Executar Economy Scanner"
-btnScanner.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnScanner.Font = Enum.Font.GothamBold; btnScanner.TextSize = 14
-btnScanner.Parent = janela
-local c1 = Instance.new("UICorner"); c1.CornerRadius = UDim.new(0, 6); c1.Parent = btnScanner
-
-btnScanner.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end) -- Hover
-btnScanner.MouseButton1Click:Connect(function()
-    tocarSFX(421058925, 0.5, 1) -- Click
-    btnScanner.Text = "⏳ Baixando..."
-    pcall(function()
-        loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))()
+    janela:GetPropertyChangedSignal("Visible"):Connect(function()
+        if janela.Visible then
+            tocarSFX(2811444158, 0.6, 1.2) 
+        end
     end)
-    task.wait(1)
+    
+    tocarSFX(2811444158, 0.6, 1.2) 
+
+    local titulo = Instance.new("TextLabel")
+    titulo.Size = UDim2.new(1, -40, 0, 40)
+    titulo.BackgroundTransparency = 1
+    titulo.Text = " 🛠️ Hub v" .. currentVersion .. " | Usos: " .. config.execucoes
+    titulo.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titulo.TextXAlignment = Enum.TextXAlignment.Left
+    titulo.Font = Enum.Font.GothamBold; titulo.TextSize = 13
+    titulo.Parent = janela
+
+    local btnFechar = Instance.new("TextButton")
+    btnFechar.Size = UDim2.new(0, 40, 0, 40)
+    btnFechar.Position = UDim2.new(1, -40, 0, 0)
+    btnFechar.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+    btnFechar.Text = "X"; btnFechar.TextColor3 = Color3.new(1, 1, 1)
+    btnFechar.Font = Enum.Font.GothamBold; btnFechar.TextSize = 16
+    btnFechar.Parent = janela
+
+    btnFechar.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end) 
+    btnFechar.MouseButton1Click:Connect(function()
+        tocarSFX(421058925, 0.5, 1) 
+        janela.Visible = false
+    end)
+
+    local linha = Instance.new("Frame")
+    linha.Size = UDim2.new(1, 0, 0, 2)
+    linha.Position = UDim2.new(0, 0, 0, 40)
+    linha.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    linha.BorderSizePixel = 0; linha.Parent = janela
+
+    local btnScanner = Instance.new("TextButton")
+    btnScanner.Size = UDim2.new(0.9, 0, 0, 45)
+    btnScanner.Position = UDim2.new(0.05, 0, 0, 60)
+    btnScanner.BackgroundColor3 = Color3.fromRGB(40, 120, 255)
     btnScanner.Text = "🔍 Executar Economy Scanner"
-end)
+    btnScanner.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnScanner.Font = Enum.Font.GothamBold; btnScanner.TextSize = 14
+    btnScanner.Parent = janela
+    local c1 = Instance.new("UICorner"); c1.CornerRadius = UDim.new(0, 6); c1.Parent = btnScanner
 
-local btnAnimacao = Instance.new("TextButton")
-btnAnimacao.Size = UDim2.new(0.9, 0, 0, 45)
-btnAnimacao.Position = UDim2.new(0.05, 0, 0, 115)
-btnAnimacao.BackgroundColor3 = Color3.fromRGB(50, 200, 100)
-btnAnimacao.Text = "🎬 Testar Animação"
-btnAnimacao.TextColor3 = Color3.fromRGB(255, 255, 255)
-btnAnimacao.Font = Enum.Font.GothamBold; btnAnimacao.TextSize = 14
-btnAnimacao.Parent = janela
-local c2 = Instance.new("UICorner"); c2.CornerRadius = UDim.new(0, 6); c2.Parent = btnAnimacao
-
-btnAnimacao.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end) -- Hover
-btnAnimacao.MouseButton1Click:Connect(function()
-    tocarSFX(421058925, 0.5, 1) -- Click
-    janela.Visible = false
-    tocarIntro(function()
-        janela.Visible = true
-    end)
-end)
-
-local toggleGui = Instance.new("ScreenGui")
-toggleGui.Name = "HapiebloxToggle"
-toggleGui.ResetOnSpawn = false
-toggleGui.Parent = guiParent
-
-local iconeBotao = Instance.new("TextButton")
-iconeBotao.Size = UDim2.new(0, 50, 0, 50)
-iconeBotao.Position = UDim2.new(0, 20, 0.5, -25)
-iconeBotao.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-iconeBotao.Text = "HB"
-iconeBotao.TextColor3 = Color3.new(1, 1, 1)
-iconeBotao.Font = Enum.Font.GothamBlack; iconeBotao.TextSize = 18
-iconeBotao.Active = true; iconeBotao.Draggable = true
-iconeBotao.Parent = toggleGui
-local c3 = Instance.new("UICorner"); c3.CornerRadius = UDim.new(1, 0); c3.Parent = iconeBotao
-
-iconeBotao.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end) -- Hover
-iconeBotao.MouseButton1Click:Connect(function()
-    tocarSFX(421058925, 0.5, 1) -- Click
-    if janela then janela.Visible = not janela.Visible end
-end)
-
-task.spawn(function()
-    while tela and tela.Parent do
-        task.wait(15)
+    btnScanner.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end)
+    btnScanner.MouseButton1Click:Connect(function()
+        tocarSFX(421058925, 0.5, 1)
+        btnScanner.Text = "⏳ Baixando..."
         pcall(function()
-            local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))
-            local data = HttpService:JSONDecode(req)
-            if data and data.version and data.version ~= currentVersion then
-                tocarSFX(2865228021, 1, 1) -- Som de notificação de Update
-                game:GetService("StarterGui"):SetCore("SendNotification", {Title="🔥 Update", Text="Nova versão detectada! Atualizando...", Duration=4})
-                task.wait(1.5)
-                limparTudo()
-                loadstring(game:HttpGet(rawMainUrl .. "?t=" .. tostring(tick())))()
-            end
+            loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))()
         end)
-    end
-end)
+        task.wait(1)
+        btnScanner.Text = "🔍 Executar Economy Scanner"
+    end)
+
+    local btnAnimacao = Instance.new("TextButton")
+    btnAnimacao.Size = UDim2.new(0.9, 0, 0, 45)
+    btnAnimacao.Position = UDim2.new(0.05, 0, 0, 115)
+    btnAnimacao.BackgroundColor3 = Color3.fromRGB(50, 200, 100)
+    btnAnimacao.Text = "🎬 Testar Animação"
+    btnAnimacao.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btnAnimacao.Font = Enum.Font.GothamBold; btnAnimacao.TextSize = 14
+    btnAnimacao.Parent = janela
+    local c2 = Instance.new("UICorner"); c2.CornerRadius = UDim.new(0, 6); c2.Parent = btnAnimacao
+
+    btnAnimacao.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end)
+    btnAnimacao.MouseButton1Click:Connect(function()
+        tocarSFX(421058925, 0.5, 1)
+        janela.Visible = false
+        tocarIntro(function()
+            janela.Visible = true
+        end)
+    end)
+
+    local toggleGui = Instance.new("ScreenGui")
+    toggleGui.Name = "HapiebloxToggle"
+    toggleGui.ResetOnSpawn = false
+    toggleGui.Parent = guiParent
+
+    local iconeBotao = Instance.new("TextButton")
+    iconeBotao.Size = UDim2.new(0, 50, 0, 50)
+    iconeBotao.Position = UDim2.new(0, 20, 0.5, -25)
+    iconeBotao.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    iconeBotao.Text = "HB"
+    iconeBotao.TextColor3 = Color3.new(1, 1, 1)
+    iconeBotao.Font = Enum.Font.GothamBlack; iconeBotao.TextSize = 18
+    iconeBotao.Active = true; iconeBotao.Draggable = true
+    iconeBotao.Parent = toggleGui
+    local c3 = Instance.new("UICorner"); c3.CornerRadius = UDim.new(1, 0); c3.Parent = iconeBotao
+
+    iconeBotao.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end)
+    iconeBotao.MouseButton1Click:Connect(function()
+        tocarSFX(421058925, 0.5, 1)
+        if janela then janela.Visible = not janela.Visible end
+    end)
+
+    task.spawn(function()
+        while tela and tela.Parent do
+            task.wait(15)
+            pcall(function()
+                local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))
+                local data = HttpService:JSONDecode(req)
+                if data and data.version and data.version ~= currentVersion then
+                    tocarSFX(2865228021, 1, 1)
+                    game:GetService("StarterGui"):SetCore("SendNotification", {Title="🔥 Update", Text="Nova versão detectada! Atualizando...", Duration=4})
+                    task.wait(1.5)
+                    limparTudo()
+                    loadstring(game:HttpGet(rawMainUrl .. "?t=" .. tostring(tick())))()
+                end
+            end)
+        end
+    end)
+end
+
+tocarIntro(iniciarScriptMenu)
