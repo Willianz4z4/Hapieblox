@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
 local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 
 local versionUrl = "https://raw.githubusercontent.com/Willianz4z4/Hapieblox/main/version.json"
@@ -35,19 +36,17 @@ limparTudo()
 -- ==========================================
 -- SISTEMA DE MEMÓRIA & CONFIGURAÇÕES (JSON)
 -- ==========================================
--- Removido o uso de pastas, salvando direto na raiz do workspace para compatibilidade com Delta
 local arqConfig = "Hapieblox_Config.json"
 local arqAutoLoad = "Hapieblox_AutoLoad.json"
 
--- 1. GERENCIADOR DO ARQUIVO DE CONFIGURAÇÃO (Configuração Master)
 local function carregarConfig()
-    local padrao = { 
-        execucoes = 0, 
-        ultimaSessao = "Nunca", 
-        auto_loading = false, 
-        money_target = false 
+    local padrao = {
+        execucoes = 0,
+        ultimaSessao = "Nunca",
+        auto_loading = false,
+        money_target = false
     }
-    
+
     if isfile and readfile and pcall(function() isfile(arqConfig) end) and isfile(arqConfig) then
         local sucesso, dados = pcall(function()
             return HttpService:JSONDecode(readfile(arqConfig))
@@ -68,10 +67,9 @@ local function salvarConfig(dados)
     end
 end
 
--- 2. GERENCIADOR DO AUTO-LOAD (Scripts Injetados)
 local function carregarAutoLoad()
     local padrao = { ALL = {}, Games = {} }
-    
+
     if isfile and readfile and pcall(function() isfile(arqAutoLoad) end) and isfile(arqAutoLoad) then
         local sucesso, dados = pcall(function()
             return HttpService:JSONDecode(readfile(arqAutoLoad))
@@ -86,18 +84,28 @@ local function carregarAutoLoad()
     return padrao
 end
 
--- INICIALIZAÇÃO DA MEMÓRIA
 local config = carregarConfig()
 config.execucoes = config.execucoes + 1
 config.ultimaSessao = os.date("%d/%m/%Y %H:%M")
 salvarConfig(config)
 
 -- ==========================================
+-- SISTEMA ANTI-AFK (NOVO)
+-- ==========================================
+local function iniciarAntiAFK()
+    LocalPlayer.Idled:Connect(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end)
+end
+task.spawn(iniciarAntiAFK)
+
+-- ==========================================
 -- SISTEMA DE AUTO-INJECT & TARGET BRIDGE
 -- ==========================================
 local function auto_inject()
     if not config.auto_loading then return end
-    
+
     local autoData = carregarAutoLoad()
     local currentPlaceId = tostring(game.PlaceId)
 
@@ -253,7 +261,7 @@ local function tocarIntro(aoTerminar)
     task.spawn(function()
         task.wait(0.3)
         pe1:Emit(300)
-        tocarSFX(134012322, 1.2, 1.3) 
+        tocarSFX(134012322, 1.2, 1.3)
 
         TweenService:Create(brilho, TweenInfo.new(0.8, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
             Size = UDim2.new(0, 700, 0, 700), ImageTransparency = 0.4
@@ -300,9 +308,9 @@ local function tocarIntro(aoTerminar)
                 lbl.TextSize = 0
                 lbl.TextColor3 = Color3.fromRGB(240, 240, 250)
                 lbl.Parent = charWrap
-                
+
                 local str = Instance.new("UIStroke")
-                str.Color = Color3.fromRGB(0, 200, 255) 
+                str.Color = Color3.fromRGB(0, 200, 255)
                 str.Thickness = 3
                 str.Parent = lbl
 
@@ -311,7 +319,7 @@ local function tocarIntro(aoTerminar)
                         TextSize = fontSize,
                         Position = UDim2.new(0, 0, 0, 0)
                     }):Play()
-                    tocarSFX(8777977699, 0.8, math.random(80, 140)/100) 
+                    tocarSFX(8777977699, 0.8, math.random(80, 140)/100)
                 end)
             end
             task.wait(0.03)
@@ -330,7 +338,7 @@ local function tocarIntro(aoTerminar)
 
                 local anim = TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
                 TweenService:Create(lbl, anim, {TextSize = tamanhoFinal, Rotation = rotacao}):Play()
-                tocarSFX(2811444158, 0.5, 1.5) 
+                tocarSFX(2811444158, 0.5, 1.5)
             end)
         end
 
@@ -343,8 +351,8 @@ local function tocarIntro(aoTerminar)
 
         task.wait(2.0)
         revelarJogadores()
-        
-        tocarSFX(300976136, 1, 1) 
+
+        tocarSFX(300976136, 1, 1)
 
         local fadeInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         TweenService:Create(brilho, fadeInfo, {ImageTransparency = 1, Size = UDim2.new(0, 800, 0, 800)}):Play()
@@ -374,7 +382,7 @@ local function tocarIntro(aoTerminar)
             particlePart:Destroy()
         end)
         introGui:Destroy()
-        
+
         if aoTerminar then aoTerminar() end
     end)
 end
@@ -397,11 +405,11 @@ local function iniciarScriptMenu()
 
     janela:GetPropertyChangedSignal("Visible"):Connect(function()
         if janela.Visible then
-            tocarSFX(2811444158, 0.6, 1.2) 
+            tocarSFX(2811444158, 0.6, 1.2)
         end
     end)
-    
-    tocarSFX(2811444158, 0.6, 1.2) 
+
+    tocarSFX(2811444158, 0.6, 1.2)
 
     local titulo = Instance.new("TextLabel")
     titulo.Size = UDim2.new(1, -40, 0, 40)
@@ -420,9 +428,9 @@ local function iniciarScriptMenu()
     btnFechar.Font = Enum.Font.GothamBold; btnFechar.TextSize = 16
     btnFechar.Parent = janela
 
-    btnFechar.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end) 
+    btnFechar.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end)
     btnFechar.MouseButton1Click:Connect(function()
-        tocarSFX(421058925, 0.5, 1) 
+        tocarSFX(421058925, 0.5, 1)
         janela.Visible = false
     end)
 
