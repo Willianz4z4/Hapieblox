@@ -34,6 +34,22 @@ end
 limparTudo()
 
 -- ==========================================
+-- SISTEMA DE ÁUDIO GLOBAL
+-- ==========================================
+local function tocarSFX(id, vol, pitch)
+    task.spawn(function()
+        local snd = Instance.new("Sound")
+        snd.SoundId = "rbxassetid://" .. tostring(id)
+        snd.Volume = vol or 1
+        snd.PlaybackSpeed = pitch or 1
+        snd.Parent = SoundService
+        snd:Play()
+        snd.Ended:Wait()
+        snd:Destroy()
+    end)
+end
+
+-- ==========================================
 -- SISTEMA DE MEMÓRIA & CONFIGURAÇÕES (JSON)
 -- ==========================================
 local arqConfig = "Hapieblox_Config.json"
@@ -41,6 +57,7 @@ local arqAutoLoad = "Hapieblox_AutoLoad.json"
 
 local function carregarConfig()
     local padrao = {
+        atived = false,
         execucoes = 0,
         ultimaSessao = "Nunca",
         auto_loading = false,
@@ -61,11 +78,38 @@ local function carregarConfig()
     return padrao
 end
 
+local config = carregarConfig()
+
+-- ==========================================
+-- 🛑 TRAVA DE SEGURANÇA (KILL SWITCH) 🛑
+-- ==========================================
+if not config.atived then
+    -- Som tech grave indicando "Sistema Desligado"
+    tocarSFX(2811444158, 0.8, 0.6) 
+    
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "⏸️ Hapieblox Standby",
+            Text = "Modo Farm desativado. Nenhuma automação será carregada.",
+            Duration = 5
+        })
+    end)
+    -- Mata o script instantaneamente
+    return 
+end
+
+-- ==========================================
+-- SE PASSOU DA TRAVA, O SCRIPT ESTÁ ATIVO
+-- ==========================================
 local function salvarConfig(dados)
     if writefile then
         pcall(function() writefile(arqConfig, HttpService:JSONEncode(dados)) end)
     end
 end
+
+config.execucoes = config.execucoes + 1
+config.ultimaSessao = os.date("%d/%m/%Y %H:%M")
+salvarConfig(config)
 
 local function carregarAutoLoad()
     local padrao = { ALL = {}, Games = {} }
@@ -84,13 +128,8 @@ local function carregarAutoLoad()
     return padrao
 end
 
-local config = carregarConfig()
-config.execucoes = config.execucoes + 1
-config.ultimaSessao = os.date("%d/%m/%Y %H:%M")
-salvarConfig(config)
-
 -- ==========================================
--- SISTEMA ANTI-AFK (NOVO)
+-- SISTEMA ANTI-AFK
 -- ==========================================
 local function iniciarAntiAFK()
     LocalPlayer.Idled:Connect(function()
@@ -101,7 +140,7 @@ end
 task.spawn(iniciarAntiAFK)
 
 -- ==========================================
--- SISTEMA DE AUTO-INJECT & TARGET BRIDGE
+-- SISTEMA DE AUTO-INJECT
 -- ==========================================
 local function auto_inject()
     if not config.auto_loading then return end
@@ -111,40 +150,32 @@ local function auto_inject()
     local globaisInjetados = 0
     local locaisInjetados = 0
 
-    -- 1. Injeta os Scripts Globais (ALL)
     if type(autoData.ALL) == "table" then
         for _, scriptCode in ipairs(autoData.ALL) do
             task.spawn(function()
                 local func, err = loadstring(scriptCode)
-                if func then
-                    pcall(func)
-                else
-                    warn("[Hapieblox] Erro no Script Global: ", tostring(err))
-                end
+                if func then pcall(func) else warn("[Hapieblox] Erro no Script Global: ", tostring(err)) end
             end)
             globaisInjetados = globaisInjetados + 1
         end
     end
 
-    -- 2. Injeta os Scripts Locais específicos do Jogo Atual
     if type(autoData.Games) == "table" and type(autoData.Games[currentPlaceId]) == "table" then
         for _, scriptCode in ipairs(autoData.Games[currentPlaceId]) do
             task.spawn(function()
                 local func, err = loadstring(scriptCode)
-                if func then
-                    pcall(func)
-                else
-                    warn("[Hapieblox] Erro no Script Local: ", tostring(err))
-                end
+                if func then pcall(func) else warn("[Hapieblox] Erro no Script Local: ", tostring(err)) end
             end)
             locaisInjetados = locaisInjetados + 1
         end
     end
 
-    -- 3. Notificação Visual de Sucesso
     if globaisInjetados > 0 or locaisInjetados > 0 then
         task.spawn(function()
-            task.wait(2) -- Espera o jogo carregar um pouco para mostrar o aviso
+            task.wait(2)
+            -- Som tech agudo indicando "Sistema Online e Injetado"
+            tocarSFX(2811444158, 0.8, 1.2)
+            
             pcall(function()
                 game:GetService("StarterGui"):SetCore("SendNotification", {
                     Title = "💉 Hapieblox Inject",
@@ -156,51 +187,10 @@ local function auto_inject()
     end
 end
 
-task.spawn(auto_inject)
-
-if config.money_target then
-    task.spawn(function()
-        local http_request = (syn and syn.request) or (http and http.request) or request
-        if http_request then
-            while task.wait(10) do
-                pcall(function()
-                    local resposta = http_request({
-                        Url = "http://1.2.3.4:5000/check_task",
-                        Method = "GET"
-                    })
-                    if resposta.StatusCode == 200 then
-                        local taskData = HttpService:JSONDecode(resposta.Body)
-                        if taskData and taskData.action == "run_scanner" then
-                            loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))()
-                        end
-                    end
-                end)
-            end
-        end
-    end)
-end
-
 -- ==========================================
--- SISTEMA DE ÁUDIO GLOBAL
--- ==========================================
-local function tocarSFX(id, vol, pitch)
-    task.spawn(function()
-        local snd = Instance.new("Sound")
-        snd.SoundId = "rbxassetid://" .. tostring(id)
-        snd.Volume = vol or 1
-        snd.PlaybackSpeed = pitch or 1
-        snd.Parent = SoundService
-        snd:Play()
-        snd.Ended:Wait()
-        snd:Destroy()
-    end)
-end
-
--- ==========================================
--- SISTEMA DE OCULTAR/REVELAR JOGADORES
+-- EFEITOS VISUAIS DA INTRO
 -- ==========================================
 local originalTransparencies = {}
-
 local function sumirComJogadores()
     originalTransparencies = {}
     for _, plr in ipairs(Players:GetPlayers()) do
@@ -226,7 +216,7 @@ local function revelarJogadores()
 end
 
 -- ==========================================
--- INTRO V15.0 (TECH, HACKER + NOVOS SFX)
+-- INTRO V15.0
 -- ==========================================
 local function tocarIntro(aoTerminar)
     if guiParent:FindFirstChild("HapiebloxIntro") then guiParent.HapiebloxIntro:Destroy() end
@@ -251,9 +241,9 @@ local function tocarIntro(aoTerminar)
     pe1.Texture = "rbxassetid://243660364"
     pe1.LightEmission = 1
     pe1.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 200)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 150, 255))
+        ColorSequenceKeypoint.new(0, 255, 200),
+        ColorSequenceKeypoint.new(0.5, 255, 255),
+        ColorSequenceKeypoint.new(1, 0, 150, 255)
     })
     pe1.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 2), NumberSequenceKeypoint.new(1, 0)})
     pe1.Rate = 0; pe1.Speed = NumberRange.new(25, 60); pe1.Lifetime = NumberRange.new(1.2, 2.5)
@@ -419,137 +409,52 @@ local function tocarIntro(aoTerminar)
     end)
 end
 
+-- Roda a intro inicial
+tocarIntro()
+
 -- ==========================================
--- PORTA DO SCRIPT (PAINEL PRINCIPAL)
+-- GATILHO DAS AUTOMAÇÕES
 -- ==========================================
-local function iniciarScriptMenu()
-    local tela = Instance.new("ScreenGui")
-    tela.Name = "HapiebloxPanel"
-    tela.ResetOnSpawn = false
-    tela.Parent = guiParent
+task.spawn(auto_inject)
 
-    local janela = Instance.new("Frame")
-    janela.Size = UDim2.new(0, 350, 0, 280)
-    janela.Position = UDim2.new(0.5, -175, 0.5, -140)
-    janela.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    janela.Active = true; janela.Draggable = true
-    janela.Parent = tela
-
-    janela:GetPropertyChangedSignal("Visible"):Connect(function()
-        if janela.Visible then
-            tocarSFX(2811444158, 0.6, 1.2)
-        end
-    end)
-
-    tocarSFX(2811444158, 0.6, 1.2)
-
-    local titulo = Instance.new("TextLabel")
-    titulo.Size = UDim2.new(1, -40, 0, 40)
-    titulo.BackgroundTransparency = 1
-    titulo.Text = " 🛠️ Hub v" .. currentVersion .. " | Usos: " .. config.execucoes
-    titulo.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titulo.TextXAlignment = Enum.TextXAlignment.Left
-    titulo.Font = Enum.Font.GothamBold; titulo.TextSize = 13
-    titulo.Parent = janela
-
-    local btnFechar = Instance.new("TextButton")
-    btnFechar.Size = UDim2.new(0, 40, 0, 40)
-    btnFechar.Position = UDim2.new(1, -40, 0, 0)
-    btnFechar.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
-    btnFechar.Text = "X"; btnFechar.TextColor3 = Color3.new(1, 1, 1)
-    btnFechar.Font = Enum.Font.GothamBold; btnFechar.TextSize = 16
-    btnFechar.Parent = janela
-
-    btnFechar.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end)
-    btnFechar.MouseButton1Click:Connect(function()
-        tocarSFX(421058925, 0.5, 1)
-        janela.Visible = false
-    end)
-
-    local linha = Instance.new("Frame")
-    linha.Size = UDim2.new(1, 0, 0, 2)
-    linha.Position = UDim2.new(0, 0, 0, 40)
-    linha.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    linha.BorderSizePixel = 0; linha.Parent = janela
-
-    local btnScanner = Instance.new("TextButton")
-    btnScanner.Size = UDim2.new(0.9, 0, 0, 45)
-    btnScanner.Position = UDim2.new(0.05, 0, 0, 60)
-    btnScanner.BackgroundColor3 = Color3.fromRGB(40, 120, 255)
-    btnScanner.Text = "🔍 Executar Economy Scanner"
-    btnScanner.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnScanner.Font = Enum.Font.GothamBold; btnScanner.TextSize = 14
-    btnScanner.Parent = janela
-    local c1 = Instance.new("UICorner"); c1.CornerRadius = UDim.new(0, 6); c1.Parent = btnScanner
-
-    btnScanner.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end)
-    btnScanner.MouseButton1Click:Connect(function()
-        tocarSFX(421058925, 0.5, 1)
-        btnScanner.Text = "⏳ Baixando..."
-        pcall(function()
-            loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))()
-        end)
-        task.wait(1)
-        btnScanner.Text = "🔍 Executar Economy Scanner"
-    end)
-
-    local btnAnimacao = Instance.new("TextButton")
-    btnAnimacao.Size = UDim2.new(0.9, 0, 0, 45)
-    btnAnimacao.Position = UDim2.new(0.05, 0, 0, 115)
-    btnAnimacao.BackgroundColor3 = Color3.fromRGB(50, 200, 100)
-    btnAnimacao.Text = "🎬 Testar Animação"
-    btnAnimacao.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btnAnimacao.Font = Enum.Font.GothamBold; btnAnimacao.TextSize = 14
-    btnAnimacao.Parent = janela
-    local c2 = Instance.new("UICorner"); c2.CornerRadius = UDim.new(0, 6); c2.Parent = btnAnimacao
-
-    btnAnimacao.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end)
-    btnAnimacao.MouseButton1Click:Connect(function()
-        tocarSFX(421058925, 0.5, 1)
-        janela.Visible = false
-        tocarIntro(function()
-            janela.Visible = true
-        end)
-    end)
-
-    local toggleGui = Instance.new("ScreenGui")
-    toggleGui.Name = "HapiebloxToggle"
-    toggleGui.ResetOnSpawn = false
-    toggleGui.Parent = guiParent
-
-    local iconeBotao = Instance.new("TextButton")
-    iconeBotao.Size = UDim2.new(0, 50, 0, 50)
-    iconeBotao.Position = UDim2.new(0, 20, 0.5, -25)
-    iconeBotao.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-    iconeBotao.Text = "HB"
-    iconeBotao.TextColor3 = Color3.new(1, 1, 1)
-    iconeBotao.Font = Enum.Font.GothamBlack; iconeBotao.TextSize = 18
-    iconeBotao.Active = true; iconeBotao.Draggable = true
-    iconeBotao.Parent = toggleGui
-    local c3 = Instance.new("UICorner"); c3.CornerRadius = UDim.new(1, 0); c3.Parent = iconeBotao
-
-    iconeBotao.MouseEnter:Connect(function() tocarSFX(12221967, 0.4, 1.5) end)
-    iconeBotao.MouseButton1Click:Connect(function()
-        tocarSFX(421058925, 0.5, 1)
-        if janela then janela.Visible = not janela.Visible end
-    end)
-
+if config.money_target then
     task.spawn(function()
-        while tela and tela.Parent do
-            task.wait(15)
-            pcall(function()
-                local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))
-                local data = HttpService:JSONDecode(req)
-                if data and data.version and data.version ~= currentVersion then
-                    tocarSFX(2865228021, 1, 1)
-                    game:GetService("StarterGui"):SetCore("SendNotification", {Title="🔥 Update", Text="Nova versão detectada! Atualizando...", Duration=4})
-                    task.wait(1.5)
-                    limparTudo()
-                    loadstring(game:HttpGet(rawMainUrl .. "?t=" .. tostring(tick())))()
-                end
-            end)
+        local http_request = (syn and syn.request) or (http and http.request) or request
+        if http_request then
+            while task.wait(10) do
+                pcall(function()
+                    local resposta = http_request({
+                        Url = "http://1.2.3.4:5000/check_task",
+                        Method = "GET"
+                    })
+                    if resposta.StatusCode == 200 then
+                        local taskData = HttpService:JSONDecode(resposta.Body)
+                        if taskData and taskData.action == "run_scanner" then
+                            loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))()
+                        end
+                    end
+                end)
+            end
         end
     end)
 end
 
-tocarIntro(iniciarScriptMenu)
+-- ==========================================
+-- AUTO-UPDATER
+-- ==========================================
+task.spawn(function()
+    while true do
+        task.wait(15)
+        pcall(function()
+            local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))
+            local data = HttpService:JSONDecode(req)
+            if data and data.version and data.version ~= currentVersion then
+                tocarSFX(2865228021, 1, 1)
+                game:GetService("StarterGui"):SetCore("SendNotification", {Title="🔥 Update", Text="Nova versão detectada! Atualizando...", Duration=4})
+                task.wait(1.5)
+                limparTudo()
+                loadstring(game:HttpGet(rawMainUrl .. "?t=" .. tostring(tick())))()
+            end
+        end)
+    end
+end)
