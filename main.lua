@@ -108,19 +108,51 @@ local function auto_inject()
 
     local autoData = carregarAutoLoad()
     local currentPlaceId = tostring(game.PlaceId)
+    local globaisInjetados = 0
+    local locaisInjetados = 0
 
-    for _, scriptCode in ipairs(autoData.ALL) do
-        task.spawn(function()
-            pcall(function() loadstring(scriptCode)() end)
-        end)
+    -- 1. Injeta os Scripts Globais (ALL)
+    if type(autoData.ALL) == "table" then
+        for _, scriptCode in ipairs(autoData.ALL) do
+            task.spawn(function()
+                local func, err = loadstring(scriptCode)
+                if func then
+                    pcall(func)
+                else
+                    warn("[Hapieblox] Erro no Script Global: ", tostring(err))
+                end
+            end)
+            globaisInjetados = globaisInjetados + 1
+        end
     end
 
-    if autoData.Games[currentPlaceId] then
+    -- 2. Injeta os Scripts Locais específicos do Jogo Atual
+    if type(autoData.Games) == "table" and type(autoData.Games[currentPlaceId]) == "table" then
         for _, scriptCode in ipairs(autoData.Games[currentPlaceId]) do
             task.spawn(function()
-                pcall(function() loadstring(scriptCode)() end)
+                local func, err = loadstring(scriptCode)
+                if func then
+                    pcall(func)
+                else
+                    warn("[Hapieblox] Erro no Script Local: ", tostring(err))
+                end
             end)
+            locaisInjetados = locaisInjetados + 1
         end
+    end
+
+    -- 3. Notificação Visual de Sucesso
+    if globaisInjetados > 0 or locaisInjetados > 0 then
+        task.spawn(function()
+            task.wait(2) -- Espera o jogo carregar um pouco para mostrar o aviso
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "💉 Hapieblox Inject",
+                    Text = string.format("Injetados:\n🌍 %d Globais\n📍 %d Locais", globaisInjetados, locaisInjetados),
+                    Duration = 6
+                })
+            end)
+        end)
     end
 end
 
