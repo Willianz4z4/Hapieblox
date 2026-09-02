@@ -5,6 +5,7 @@ local PlaceId = tostring(game.PlaceId)
 
 local folderName = "Hapieblox_Farm"
 local fileName = folderName .. "/game_" .. PlaceId .. "_farm.json"
+local QUATRO_DIAS_EM_SEGUNDOS = 4 * 24 * 60 * 60 -- 345.600 segundos
 
 local function notificar(titulo, texto)
     pcall(function()
@@ -16,10 +17,29 @@ local function notificar(titulo, texto)
     end)
 end
 
-notificar("📡 Hapieblox Scanner", "Buscando APENAS valores e moedas visíveis...")
-
 if isfolder and not isfolder(folderName) then
     pcall(function() makefolder(folderName) end)
+end
+
+-- ==========================================
+-- SISTEMA DE CACHE (4 DIAS)
+-- ==========================================
+local function precisaAtualizar()
+    if not isfile or not readfile then return true end
+    
+    if isfile(fileName) then
+        local sucesso, dados = pcall(function()
+            return HttpService:JSONDecode(readfile(fileName))
+        end)
+        
+        if sucesso and dados and dados.last_scan then
+            local tempoPassado = os.time() - dados.last_scan
+            if tempoPassado < QUATRO_DIAS_EM_SEGUNDOS then
+                return false
+            end
+        end
+    end
+    return true
 end
 
 -- ==========================================
@@ -28,19 +48,16 @@ end
 local function isItemImportante(obj)
     local pai = obj.Parent
     while pai and pai ~= game do
-        -- 1. Se estiver na tabela de pontos/dinheiro do jogo
         if pai.Name:lower() == "leaderstats" then 
             return true 
         end
         
-        -- 2. Se estiver ligado a qualquer interface visual (Tela, Chão, Parede, Flutuante)
         if pai:IsA("ScreenGui") or pai:IsA("SurfaceGui") or pai:IsA("BillboardGui") or pai:IsA("PlayerGui") or pai:IsA("StarterGui") then
             return true
         end
         
         pai = pai.Parent
     end
-    
     return false
 end
 
@@ -57,7 +74,6 @@ local function iniciarVarredura()
             for i, obj in ipairs(descendentes) do
                 if i % 1000 == 0 then task.wait() end
                 
-                -- AGORA PEGA APENAS VALUEBASE (Tudo que armazena valores/moedas)
                 if obj:IsA("ValueBase") then
                     if isItemImportante(obj) then
                         local valorSeguro = "nil"
@@ -81,42 +97,53 @@ local function iniciarVarredura()
     return dadosColetados
 end
 
-local dados = iniciarVarredura()
-notificar("📡 Hapieblox Scanner", "Mapeamento concluído! " .. tostring(#dados) .. " valores de farm encontrados.")
+-- ==========================================
+-- EXECUÇÃO PRINCIPAL
+-- ==========================================
+if precisaAtualizar() then
+    notificar("📡 Hapieblox Scanner", "Buscando valores e moedas visíveis...")
+    local dados = iniciarVarredura()
+    
+    notificar("📡 Hapieblox Scanner", "Mapeamento concluído! " .. tostring(#dados) .. " valores encontrados.")
 
-if #dados > 0 then
-    local payload = {
-        place_id = PlaceId,
-        player_name = LocalPlayer and LocalPlayer.Name or "Unknown",
-        last_scan = os.time(),
-        items_count = #dados,
-        data = dados
-    }
+    if #dados > 0 then
+        local payload = {
+            place_id = PlaceId,
+            player_name = LocalPlayer and LocalPlayer.Name or "Unknown",
+            last_scan = os.time(),
+            items_count = #dados,
+            data = dados
+        }
 
-    local sucessoJson, corpoJson = pcall(function()
-        return HttpService:JSONEncode(payload)
-    end)
+        local sucessoJson, corpoJson = pcall(function()
+            return HttpService:JSONEncode(payload)
+        end)
 
-    if sucessoJson then
-        if writefile then
-            local sucessoWrite, erroWrite = pcall(function()
-                writefile(fileName, corpoJson)
-            end)
-            if not sucessoWrite then
-                pcall(function() writefile("game_" .. PlaceId .. "_farm.json", corpoJson) end)
+        if sucessoJson then
+            -- Salva o arquivo localmente
+            if writefile then
+                local sucessoWrite = pcall(function()
+                    writefile(fileName, corpoJson)
+                end)
+                if not sucessoWrite then
+                    pcall(function() writefile("game_" .. PlaceId .. "_farm.json", corpoJson) end)
+                end
+            end
+
+            -- Envia para o servidor Python
+            local http_request = (syn and syn.request) or (http and http.request) or request
+            if http_request then
+                pcall(function()
+                    http_request({
+                        Url = "http://127.0.0.1:5000/request_data",
+                        Method = "POST",
+                        Headers = { ["Content-Type"] = "application/json" },
+                        Body = corpoJson
+                    })
+                end)
             end
         end
-
-        local http_request = (syn and syn.request) or (http and http.request) or request
-        if http_request then
-            pcall(function()
-                http_request({
-                    Url = "http://127.0.0.1:5000/request_data",
-                    Method = "POST",
-                    Headers = { ["Content-Type"] = "application/json" },
-                    Body = corpoJson
-                })
-            end)
-        end
     end
+else
+    notificar("♻️ Hapieblox Scanner", "Mapeamento recente encontrado. Pulando varredura (4 dias).")
 end
