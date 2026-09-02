@@ -3,41 +3,26 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlaceId = tostring(game.PlaceId)
 
--- ==========================================
--- CONFIGURAÇÕES DE DIRETÓRIO E TEMPO
--- ==========================================
 local folderName = "Hapieblox_Farm"
 local fileName = folderName .. "/game_" .. PlaceId .. ".json"
-local TRES_DIAS_EM_SEGUNDOS = 3 * 24 * 60 * 60
 
--- Garante que a pasta exista
+-- Função para mandar notificação visual na tela do Roblox
+local function notificar(titulo, texto)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = titulo,
+            Text = texto,
+            Duration = 5
+        })
+    end)
+end
+
+notificar("📡 Hapieblox Scanner", "Iniciando varredura no mapa...")
+
 if isfolder and not isfolder(folderName) then
     pcall(function() makefolder(folderName) end)
 end
 
--- ==========================================
--- FUNÇÃO: VERIFICA SE PRECISA ATUALIZAR (3 DIAS)
--- ==========================================
-local function precisaAtualizar()
-    if not isfile or not readfile then return true end
-    
-    if isfile(fileName) then
-        local sucesso, dados = pcall(function()
-            return HttpService:JSONDecode(readfile(fileName))
-        end)
-        if sucesso and dados and dados.last_scan then
-            if os.time() - dados.last_scan < TRES_DIAS_EM_SEGUNDOS then
-                print("[Hapieblox Scanner] Jogo já escaneado recentemente. Pulando varredura.")
-                return false
-            end
-        end
-    end
-    return true
-end
-
--- ==========================================
--- FUNÇÃO: VARREDURA SEGURA
--- ==========================================
 local function iniciarVarredura()
     local dadosColetados = {}
     local servicos = { workspace, Players, game:GetService("ReplicatedStorage") }
@@ -46,11 +31,16 @@ local function iniciarVarredura()
         pcall(function()
             local descendentes = serv:GetDescendants()
             for i, obj in ipairs(descendentes) do
-                if i % 500 == 0 then task.wait() end 
+                if i % 1000 == 0 then task.wait() end -- Previne travamento
                 
-                if obj:IsA("ValueBase") then
+                -- AGORA BUSCA VALUEBASES, REMOTE EVENTS E REMOTE FUNCTIONS
+                if obj:IsA("ValueBase") or obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
                     local valorSeguro = "nil"
-                    if obj.Value ~= nil then valorSeguro = tostring(obj.Value) end
+                    pcall(function()
+                        if obj:IsA("ValueBase") and obj.Value ~= nil then 
+                            valorSeguro = tostring(obj.Value) 
+                        end
+                    end)
                     
                     table.insert(dadosColetados, {
                         Nome = obj.Name,
@@ -65,71 +55,51 @@ local function iniciarVarredura()
     return dadosColetados
 end
 
--- ==========================================
--- EXECUÇÃO PRINCIPAL (SALVA PRIMEIRO, ENVIA DEPOIS)
--- ==========================================
-if precisaAtualizar() then
-    print("[Hapieblox Scanner] Iniciando varredura silenciosa...")
-    local dados = iniciarVarredura()
+local dados = iniciarVarredura()
+notificar("📡 Hapieblox Scanner", "Varredura concluída. Encontrados: " .. tostring(#dados) .. " itens.")
 
-    if #dados > 0 then
-        -- Monta o pacote COMPLETO com todos os dados do mapa
-        local payload = {
-            place_id = PlaceId,
-            player_name = LocalPlayer and LocalPlayer.Name or "Unknown",
-            last_scan = os.time(),
-            data = dados
-        }
-        
-        local sucessoJson, corpoJson = pcall(function()
-            return HttpService:JSONEncode(payload)
+local payload = {
+    place_id = PlaceId,
+    player_name = LocalPlayer and LocalPlayer.Name or "Unknown",
+    last_scan = os.time(),
+    items_count = #dados,
+    data = dados
+}
+
+local sucessoJson, corpoJson = pcall(function()
+    return HttpService:JSONEncode(payload)
+end)
+
+if sucessoJson then
+    -- AGORA ELE SALVA DE QUALQUER JEITO, ATÉ SE A LISTA FOR ZERO
+    if writefile then
+        local sucessoWrite, erroWrite = pcall(function()
+            writefile(fileName, corpoJson)
         end)
-
-        if sucessoJson then
-            -- 1º PASSO: SALVAR O ARQUIVO NA PASTA EM FORMATO JSON
-            if writefile then
-                local sucessoWrite, erroWrite = pcall(function()
-                    writefile(fileName, corpoJson)
-                end)
-                
-                if sucessoWrite then
-                    print("[Hapieblox Scanner] SUCESSO: Arquivo salvo no formato correto em " .. fileName)
-                else
-                    warn("[Hapieblox Scanner] Falha ao salvar na subpasta. Tentando salvar na raiz...")
-                    pcall(function()
-                        writefile("game_" .. PlaceId .. ".json", corpoJson)
-                    end)
-                end
-            else
-                warn("[Hapieblox Scanner] Executor não suporta writefile.")
-            end
-
-            -- 2º PASSO: ENVIAR PARA A API PYTHON
-            local http_request = (syn and syn.request) or (http and http.request) or request
-            if http_request then
-                pcall(function()
-                    local resposta = http_request({
-                        Url = "http://127.0.0.1:5000/request_data",
-                        Method = "POST",
-                        Headers = { ["Content-Type"] = "application/json" },
-                        Body = corpoJson
-                    })
-                    if resposta.StatusCode == 200 then
-                        print("[Hapieblox Scanner] Dados enviados com sucesso para a API!")
-                        pcall(function()
-                            game:GetService("StarterGui"):SetCore("SendNotification", {
-                                Title = "📡 Scanner Hapieblox",
-                                Text = "JSON salvo na pasta e enviado pro Python!",
-                                Duration = 4
-                            })
-                        end)
-                    end
-                end)
-            end
+        
+        if sucessoWrite then
+            notificar("✅ Sucesso!", "Arquivo salvo DENTRO da pasta Hapieblox_Farm!")
         else
-            warn("[Hapieblox Scanner] Erro ao converter dados para JSON.")
+            -- Se o executor bugar a pasta, salva solto na Workspace
+            pcall(function()
+                writefile("game_" .. PlaceId .. ".json", corpoJson)
+            end)
+            notificar("⚠️ Aviso", "Falha na pasta. Arquivo salvo solto na raiz do Workspace.")
         end
     else
-        print("[Hapieblox Scanner] Nenhum dado de valor (ValueBase) encontrado neste jogo.")
+        notificar("❌ Erro Crítico", "Seu executor não tem suporte a writefile!")
+    end
+
+    -- Tenta mandar pro Python (Opcional)
+    local http_request = (syn and syn.request) or (http and http.request) or request
+    if http_request then
+        pcall(function()
+            http_request({
+                Url = "http://127.0.0.1:5000/request_data",
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = corpoJson
+            })
+        end)
     end
 end
