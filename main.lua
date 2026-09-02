@@ -170,7 +170,7 @@ local function auto_inject()
 
     if globaisInjetados > 0 or locaisInjetados > 0 then
         task.spawn(function()
-            task.wait(2)
+            task.wait(1)
             tocarSFX(2811444158, 0.8, 1.2)
             pcall(function()
                 game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -242,7 +242,6 @@ local function tocarIntro(aoTerminar)
         pe1.Texture = "rbxassetid://243660364"
         pe1.LightEmission = 1
         
-        -- CORREÇÃO APLICADA AQUI: Adicionado Color3.fromRGB()
         pe1.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 200)),
             ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
@@ -409,57 +408,67 @@ local function tocarIntro(aoTerminar)
             end)
             introGui:Destroy()
 
+            -- Chama as automações só depois que tudo acabar
             if aoTerminar then aoTerminar() end
         end)
     end)
 end
 
 -- ==========================================
--- GATILHO DAS AUTOMAÇÕES
+-- GATILHO DAS AUTOMAÇÕES (FUNÇÃO DE ESPERA)
 -- ==========================================
--- Roda a intro inicial
-task.spawn(tocarIntro)
+local function iniciarSistemasFarm()
+    -- 1. Injeta os scripts de usuário
+    task.spawn(auto_inject)
 
-task.spawn(auto_inject)
-
-if config.money_target then
-    task.spawn(function()
-        local http_request = (syn and syn.request) or (http and http.request) or request
-        if http_request then
-            while task.wait(10) do
-                pcall(function()
-                    local resposta = http_request({
-                        Url = "http://1.2.3.4:5000/check_task",
-                        Method = "GET"
-                    })
-                    if resposta.StatusCode == 200 then
-                        local taskData = HttpService:JSONDecode(resposta.Body)
-                        if taskData and taskData.action == "run_scanner" then
-                            loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))()
+    -- 2. Inicia o Scanner DIRETO na entrada do jogo (O scanner mesmo valida os 3 dias)
+    if config.money_target then
+        task.spawn(function()
+            pcall(function()
+                loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))()
+            end)
+        end)
+        
+        -- Loop de escuta para comandos futuros da API
+        task.spawn(function()
+            local http_request = (syn and syn.request) or (http and http.request) or request
+            if http_request then
+                while task.wait(10) do
+                    pcall(function()
+                        local resposta = http_request({
+                            Url = "http://1.2.3.4:5000/check_task",
+                            Method = "GET"
+                        })
+                        if resposta.StatusCode == 200 then
+                            local taskData = HttpService:JSONDecode(resposta.Body)
+                            if taskData and taskData.action == "run_scanner" then
+                                loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))()
+                            end
                         end
-                    end
-                end)
+                    end)
+                end
             end
+        end)
+    end
+
+    -- 3. Inicia Auto-Updater do Hapieblox
+    task.spawn(function()
+        while true do
+            task.wait(15)
+            pcall(function()
+                local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))
+                local data = HttpService:JSONDecode(req)
+                if data and data.version and data.version ~= currentVersion then
+                    tocarSFX(2865228021, 1, 1)
+                    game:GetService("StarterGui"):SetCore("SendNotification", {Title="🔥 Update", Text="Nova versão detectada! Atualizando...", Duration=4})
+                    task.wait(1.5)
+                    limparTudo()
+                    loadstring(game:HttpGet(rawMainUrl .. "?t=" .. tostring(tick())))()
+                end
+            end)
         end
     end)
 end
 
--- ==========================================
--- AUTO-UPDATER
--- ==========================================
-task.spawn(function()
-    while true do
-        task.wait(15)
-        pcall(function()
-            local req = game:HttpGet(versionUrl .. "?t=" .. tostring(tick()))
-            local data = HttpService:JSONDecode(req)
-            if data and data.version and data.version ~= currentVersion then
-                tocarSFX(2865228021, 1, 1)
-                game:GetService("StarterGui"):SetCore("SendNotification", {Title="🔥 Update", Text="Nova versão detectada! Atualizando...", Duration=4})
-                task.wait(1.5)
-                limparTudo()
-                loadstring(game:HttpGet(rawMainUrl .. "?t=" .. tostring(tick())))()
-            end
-        end)
-    end
-end)
+-- Roda a intro inicial e manda a função esperar a intro terminar
+tocarIntro(iniciarSistemasFarm)
