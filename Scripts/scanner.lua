@@ -5,41 +5,42 @@ local PlaceId = tostring(game.PlaceId)
 
 local folderName = "Hapieblox_Farm"
 local fileName = folderName .. "/game_" .. PlaceId .. "_farm.json"
+local fallbackName = "game_" .. PlaceId .. "_farm.json"
 local QUATRO_DIAS_EM_SEGUNDOS = 4 * 24 * 60 * 60 -- 345.600 segundos
-
-local function notificar(titulo, texto)
-    pcall(function()
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = titulo,
-            Text = texto,
-            Duration = 5
-        })
-    end)
-end
 
 if isfolder and not isfolder(folderName) then
     pcall(function() makefolder(folderName) end)
 end
 
 -- ==========================================
--- SISTEMA DE CACHE (4 DIAS)
+-- SISTEMA DE CACHE BLINDADO (VERIFICA AS DUAS PASTAS)
 -- ==========================================
 local function precisaAtualizar()
     if not isfile or not readfile then return true end
     
+    local conteudo = nil
+    -- Tenta ler da pasta principal
     if isfile(fileName) then
+        pcall(function() conteudo = readfile(fileName) end)
+    -- Se não achar, tenta ler do plano B (raiz)
+    elseif isfile(fallbackName) then
+        pcall(function() conteudo = readfile(fallbackName) end)
+    end
+    
+    if conteudo then
         local sucesso, dados = pcall(function()
-            return HttpService:JSONDecode(readfile(fileName))
+            return HttpService:JSONDecode(conteudo)
         end)
         
         if sucesso and dados and dados.last_scan then
             local tempoPassado = os.time() - dados.last_scan
             if tempoPassado < QUATRO_DIAS_EM_SEGUNDOS then
-                return false
+                return false -- Ainda tá no prazo, não faz nada!
             end
         end
     end
-    return true
+    
+    return true -- Se não achou ou expirou, manda bala
 end
 
 -- ==========================================
@@ -101,10 +102,7 @@ end
 -- EXECUÇÃO PRINCIPAL
 -- ==========================================
 if precisaAtualizar() then
-    notificar("📡 Hapieblox Scanner", "Buscando valores e moedas visíveis...")
     local dados = iniciarVarredura()
-    
-    notificar("📡 Hapieblox Scanner", "Mapeamento concluído! " .. tostring(#dados) .. " valores encontrados.")
 
     if #dados > 0 then
         local payload = {
@@ -120,13 +118,13 @@ if precisaAtualizar() then
         end)
 
         if sucessoJson then
-            -- Salva o arquivo localmente
+            -- Salva o arquivo localmente (Tenta A, depois B)
             if writefile then
                 local sucessoWrite = pcall(function()
                     writefile(fileName, corpoJson)
                 end)
                 if not sucessoWrite then
-                    pcall(function() writefile("game_" .. PlaceId .. "_farm.json", corpoJson) end)
+                    pcall(function() writefile(fallbackName, corpoJson) end)
                 end
             end
 
@@ -144,6 +142,4 @@ if precisaAtualizar() then
             end
         end
     end
-else
-    notificar("♻️ Hapieblox Scanner", "Mapeamento recente encontrado. Pulando varredura (4 dias).")
 end
