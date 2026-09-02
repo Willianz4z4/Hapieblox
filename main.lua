@@ -84,7 +84,6 @@ local config = carregarConfig()
 -- 🛑 TRAVA DE SEGURANÇA (KILL SWITCH) 🛑
 -- ==========================================
 if not config.atived then
-    -- Som tech grave indicando "Sistema Desligado"
     tocarSFX(2811444158, 0.8, 0.6) 
     
     pcall(function()
@@ -94,7 +93,6 @@ if not config.atived then
             Duration = 5
         })
     end)
-    -- Mata o script instantaneamente
     return 
 end
 
@@ -173,9 +171,7 @@ local function auto_inject()
     if globaisInjetados > 0 or locaisInjetados > 0 then
         task.spawn(function()
             task.wait(2)
-            -- Som tech agudo indicando "Sistema Online e Injetado"
             tocarSFX(2811444158, 0.8, 1.2)
-            
             pcall(function()
                 game:GetService("StarterGui"):SetCore("SendNotification", {
                     Title = "💉 Hapieblox Inject",
@@ -193,228 +189,237 @@ end
 local originalTransparencies = {}
 local function sumirComJogadores()
     originalTransparencies = {}
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr.Character then
-            for _, part in ipairs(plr.Character:GetDescendants()) do
-                if part:IsA("BasePart") or part:IsA("Decal") or part:IsA("Texture") then
-                    if part.Name ~= "HumanoidRootPart" then
-                        originalTransparencies[part] = part.Transparency
-                        TweenService:Create(part, TweenInfo.new(0.3), {Transparency = 1}):Play()
+    pcall(function()
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr.Character then
+                for _, part in ipairs(plr.Character:GetDescendants()) do
+                    if part:IsA("BasePart") or part:IsA("Decal") or part:IsA("Texture") then
+                        if part.Name ~= "HumanoidRootPart" then
+                            originalTransparencies[part] = part.Transparency
+                            TweenService:Create(part, TweenInfo.new(0.3), {Transparency = 1}):Play()
+                        end
                     end
                 end
             end
         end
-    end
+    end)
 end
 
 local function revelarJogadores()
-    for part, originalTrans in pairs(originalTransparencies) do
-        if part and part.Parent then
-            TweenService:Create(part, TweenInfo.new(2.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Transparency = originalTrans}):Play()
+    pcall(function()
+        for part, originalTrans in pairs(originalTransparencies) do
+            if part and part.Parent then
+                TweenService:Create(part, TweenInfo.new(2.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Transparency = originalTrans}):Play()
+            end
         end
-    end
+    end)
 end
 
 -- ==========================================
 -- INTRO V15.0
 -- ==========================================
 local function tocarIntro(aoTerminar)
-    if guiParent:FindFirstChild("HapiebloxIntro") then guiParent.HapiebloxIntro:Destroy() end
+    pcall(function()
+        if guiParent:FindFirstChild("HapiebloxIntro") then guiParent.HapiebloxIntro:Destroy() end
 
-    local introGui = Instance.new("ScreenGui")
-    introGui.Name = "HapiebloxIntro"
-    introGui.ResetOnSpawn = false
-    introGui.IgnoreGuiInset = true
-    introGui.Parent = guiParent
+        local introGui = Instance.new("ScreenGui")
+        introGui.Name = "HapiebloxIntro"
+        introGui.ResetOnSpawn = false
+        introGui.IgnoreGuiInset = true
+        introGui.Parent = guiParent
 
-    sumirComJogadores()
+        sumirComJogadores()
 
-    local cam = workspace.CurrentCamera
-    local particlePart = Instance.new("Part")
-    particlePart.Size = Vector3.new(1, 1, 1)
-    particlePart.Transparency = 1
-    particlePart.Anchored = true
-    particlePart.CanCollide = false
-    particlePart.Parent = cam
+        local cam = workspace.CurrentCamera
+        local particlePart = Instance.new("Part")
+        particlePart.Size = Vector3.new(1, 1, 1)
+        particlePart.Transparency = 1
+        particlePart.Anchored = true
+        particlePart.CanCollide = false
+        particlePart.Parent = cam
 
-    local pe1 = Instance.new("ParticleEmitter")
-    pe1.Texture = "rbxassetid://243660364"
-    pe1.LightEmission = 1
-    pe1.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, 255, 200),
-        ColorSequenceKeypoint.new(0.5, 255, 255),
-        ColorSequenceKeypoint.new(1, 0, 150, 255)
-    })
-    pe1.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 2), NumberSequenceKeypoint.new(1, 0)})
-    pe1.Rate = 0; pe1.Speed = NumberRange.new(25, 60); pe1.Lifetime = NumberRange.new(1.2, 2.5)
-    pe1.SpreadAngle = Vector2.new(180, 180); pe1.Parent = particlePart
+        local pe1 = Instance.new("ParticleEmitter")
+        pe1.Texture = "rbxassetid://243660364"
+        pe1.LightEmission = 1
+        
+        -- CORREÇÃO APLICADA AQUI: Adicionado Color3.fromRGB()
+        pe1.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 200)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 150, 255))
+        })
+        
+        pe1.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 2), NumberSequenceKeypoint.new(1, 0)})
+        pe1.Rate = 0; pe1.Speed = NumberRange.new(25, 60); pe1.Lifetime = NumberRange.new(1.2, 2.5)
+        pe1.SpreadAngle = Vector2.new(180, 180); pe1.Parent = particlePart
 
-    local runConn = RunService.RenderStepped:Connect(function()
-        particlePart.CFrame = cam.CFrame * CFrame.new(0, 0, -12)
-    end)
+        local runConn = RunService.RenderStepped:Connect(function()
+            particlePart.CFrame = cam.CFrame * CFrame.new(0, 0, -12)
+        end)
 
-    local center = Instance.new("Frame")
-    center.Size = UDim2.new(1, 0, 1, 0)
-    center.BackgroundTransparency = 1
-    center.Parent = introGui
+        local center = Instance.new("Frame")
+        center.Size = UDim2.new(1, 0, 1, 0)
+        center.BackgroundTransparency = 1
+        center.Parent = introGui
 
-    local brilho = Instance.new("ImageLabel")
-    brilho.Image = "rbxassetid://1319266157"
-    brilho.Size = UDim2.new(0, 0, 0, 0)
-    brilho.Position = UDim2.new(0.5, 0, 0.5, 0)
-    brilho.AnchorPoint = Vector2.new(0.5, 0.5)
-    brilho.BackgroundTransparency = 1
-    brilho.ImageColor3 = Color3.fromRGB(0, 200, 255)
-    brilho.ImageTransparency = 1
-    brilho.Parent = center
+        local brilho = Instance.new("ImageLabel")
+        brilho.Image = "rbxassetid://1319266157"
+        brilho.Size = UDim2.new(0, 0, 0, 0)
+        brilho.Position = UDim2.new(0.5, 0, 0.5, 0)
+        brilho.AnchorPoint = Vector2.new(0.5, 0.5)
+        brilho.BackgroundTransparency = 1
+        brilho.ImageColor3 = Color3.fromRGB(0, 200, 255)
+        brilho.ImageTransparency = 1
+        brilho.Parent = center
 
-    local textContainer = Instance.new("Frame")
-    textContainer.Size = UDim2.new(1, 0, 1, 0)
-    textContainer.BackgroundTransparency = 1
-    textContainer.Parent = center
+        local textContainer = Instance.new("Frame")
+        textContainer.Size = UDim2.new(1, 0, 1, 0)
+        textContainer.BackgroundTransparency = 1
+        textContainer.Parent = center
 
-    local layout = Instance.new("UIListLayout")
-    layout.FillDirection = Enum.FillDirection.Horizontal
-    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    layout.VerticalAlignment = Enum.VerticalAlignment.Center
-    layout.Padding = UDim.new(0, 0)
-    layout.Parent = textContainer
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection.Horizontal
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.VerticalAlignment = Enum.VerticalAlignment.Center
+        layout.Padding = UDim.new(0, 0)
+        layout.Parent = textContainer
 
-    task.spawn(function()
-        task.wait(0.3)
-        pe1:Emit(300)
-        tocarSFX(134012322, 1.2, 1.3)
+        task.spawn(function()
+            task.wait(0.3)
+            pe1:Emit(300)
+            tocarSFX(134012322, 1.2, 1.3)
 
-        TweenService:Create(brilho, TweenInfo.new(0.8, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 700, 0, 700), ImageTransparency = 0.4
-        }):Play()
+            TweenService:Create(brilho, TweenInfo.new(0.8, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0, 700, 0, 700), ImageTransparency = 0.4
+            }):Play()
 
-        for i = 1, 35 do
-            task.spawn(function()
-                local part = Instance.new("Frame")
-                local pSize = math.random(6, 14)
-                part.Size = UDim2.new(0, pSize, 0, pSize)
-                part.Position = UDim2.new(math.random(5, 95)/100, 0, 1.2, 0)
-                part.BackgroundColor3 = math.random(1, 2) == 1 and Color3.fromRGB(0, 255, 200) or Color3.fromRGB(0, 150, 255)
-                local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(0, 2); corner.Parent = part
-                part.Parent = introGui
-
-                local tInfo = TweenInfo.new(math.random(15, 30)/10, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-                local tw = TweenService:Create(part, tInfo, {
-                    Position = UDim2.new(part.Position.X.Scale + (math.random(-10, 10)/100), 0, math.random(10, 60)/100, 0),
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(0, 0, 0, 0)
-                })
-                tw:Play()
-                tw.Completed:Connect(function() part:Destroy() end)
-            end)
-            task.wait(0.01)
-        end
-
-        local textoReal = "HapieBlox Script"
-        local fontSize = 38
-        for i = 1, #textoReal do
-            local char = string.sub(textoReal, i, i)
-            local charWrap = Instance.new("Frame")
-            charWrap.Size = char == " " and UDim2.new(0, 10, 0, 60) or UDim2.new(0, 24, 0, 60)
-            charWrap.BackgroundTransparency = 1
-            charWrap.Parent = textContainer
-
-            if char ~= " " then
-                local lbl = Instance.new("TextLabel")
-                lbl.Text = char
-                lbl.Size = UDim2.new(1, 0, 1, 0)
-                lbl.Position = UDim2.new(0, 0, 0.5, 0)
-                lbl.BackgroundTransparency = 1
-                lbl.Font = Enum.Font.GothamBlack
-                lbl.TextSize = 0
-                lbl.TextColor3 = Color3.fromRGB(240, 240, 250)
-                lbl.Parent = charWrap
-
-                local str = Instance.new("UIStroke")
-                str.Color = Color3.fromRGB(0, 200, 255)
-                str.Thickness = 3
-                str.Parent = lbl
-
+            for i = 1, 35 do
                 task.spawn(function()
-                    TweenService:Create(lbl, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-                        TextSize = fontSize,
-                        Position = UDim2.new(0, 0, 0, 0)
-                    }):Play()
-                    tocarSFX(8777977699, 0.8, math.random(80, 140)/100)
+                    local part = Instance.new("Frame")
+                    local pSize = math.random(6, 14)
+                    part.Size = UDim2.new(0, pSize, 0, pSize)
+                    part.Position = UDim2.new(math.random(5, 95)/100, 0, 1.2, 0)
+                    part.BackgroundColor3 = math.random(1, 2) == 1 and Color3.fromRGB(0, 255, 200) or Color3.fromRGB(0, 150, 255)
+                    local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(0, 2); corner.Parent = part
+                    part.Parent = introGui
+
+                    local tInfo = TweenInfo.new(math.random(15, 30)/10, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+                    local tw = TweenService:Create(part, tInfo, {
+                        Position = UDim2.new(part.Position.X.Scale + (math.random(-10, 10)/100), 0, math.random(10, 60)/100, 0),
+                        BackgroundTransparency = 1,
+                        Size = UDim2.new(0, 0, 0, 0)
+                    })
+                    tw:Play()
+                    tw.Completed:Connect(function() part:Destroy() end)
+                end)
+                task.wait(0.01)
+            end
+
+            local textoReal = "HapieBlox Script"
+            local fontSize = 38
+            for i = 1, #textoReal do
+                local char = string.sub(textoReal, i, i)
+                local charWrap = Instance.new("Frame")
+                charWrap.Size = char == " " and UDim2.new(0, 10, 0, 60) or UDim2.new(0, 24, 0, 60)
+                charWrap.BackgroundTransparency = 1
+                charWrap.Parent = textContainer
+
+                if char ~= " " then
+                    local lbl = Instance.new("TextLabel")
+                    lbl.Text = char
+                    lbl.Size = UDim2.new(1, 0, 1, 0)
+                    lbl.Position = UDim2.new(0, 0, 0.5, 0)
+                    lbl.BackgroundTransparency = 1
+                    lbl.Font = Enum.Font.GothamBlack
+                    lbl.TextSize = 0
+                    lbl.TextColor3 = Color3.fromRGB(240, 240, 250)
+                    lbl.Parent = charWrap
+
+                    local str = Instance.new("UIStroke")
+                    str.Color = Color3.fromRGB(0, 200, 255)
+                    str.Thickness = 3
+                    str.Parent = lbl
+
+                    task.spawn(function()
+                        TweenService:Create(lbl, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+                            TextSize = fontSize,
+                            Position = UDim2.new(0, 0, 0, 0)
+                        }):Play()
+                        tocarSFX(8777977699, 0.8, math.random(80, 140)/100)
+                    end)
+                end
+                task.wait(0.03)
+            end
+
+            local function criarTechIcon(emoji, pos, rotacao, tamanhoFinal, delayAparecer)
+                task.delay(delayAparecer, function()
+                    local lbl = Instance.new("TextLabel")
+                    lbl.BackgroundTransparency = 1
+                    lbl.Text = emoji
+                    lbl.TextSize = 0
+                    lbl.Rotation = rotacao - 40
+                    lbl.Position = pos
+                    lbl.Font = Enum.Font.Code
+                    lbl.Parent = center
+
+                    local anim = TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+                    TweenService:Create(lbl, anim, {TextSize = tamanhoFinal, Rotation = rotacao}):Play()
+                    tocarSFX(2811444158, 0.5, 1.5)
                 end)
             end
-            task.wait(0.03)
-        end
 
-        local function criarTechIcon(emoji, pos, rotacao, tamanhoFinal, delayAparecer)
-            task.delay(delayAparecer, function()
-                local lbl = Instance.new("TextLabel")
-                lbl.BackgroundTransparency = 1
-                lbl.Text = emoji
-                lbl.TextSize = 0
-                lbl.Rotation = rotacao - 40
-                lbl.Position = pos
-                lbl.Font = Enum.Font.Code
-                lbl.Parent = center
+            criarTechIcon("</>", UDim2.new(0.83, 0, 0.22, 0), 10, 32, 0.1)
+            criarTechIcon("⚡", UDim2.new(0.78, 0, -0.05, 0), -15, 38, 0.2)
+            criarTechIcon("🤖", UDim2.new(0.12, 0, 0.15, 0), -10, 35, 0.3)
+            criarTechIcon("💻", UDim2.new(0.18, 0, 0.8, 0), 15, 35, 0.4)
+            criarTechIcon("🛡️", UDim2.new(0.07, 0, 0.52, 0), -5, 32, 0.5)
+            criarTechIcon("⚙️", UDim2.new(0.88, 0, 0.72, 0), 25, 36, 0.6)
 
-                local anim = TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-                TweenService:Create(lbl, anim, {TextSize = tamanhoFinal, Rotation = rotacao}):Play()
-                tocarSFX(2811444158, 0.5, 1.5)
-            end)
-        end
+            task.wait(2.0)
+            revelarJogadores()
 
-        criarTechIcon("</>", UDim2.new(0.83, 0, 0.22, 0), 10, 32, 0.1)
-        criarTechIcon("⚡", UDim2.new(0.78, 0, -0.05, 0), -15, 38, 0.2)
-        criarTechIcon("🤖", UDim2.new(0.12, 0, 0.15, 0), -10, 35, 0.3)
-        criarTechIcon("💻", UDim2.new(0.18, 0, 0.8, 0), 15, 35, 0.4)
-        criarTechIcon("🛡️", UDim2.new(0.07, 0, 0.52, 0), -5, 32, 0.5)
-        criarTechIcon("⚙️", UDim2.new(0.88, 0, 0.72, 0), 25, 36, 0.6)
+            tocarSFX(300976136, 1, 1)
 
-        task.wait(2.0)
-        revelarJogadores()
+            local fadeInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            TweenService:Create(brilho, fadeInfo, {ImageTransparency = 1, Size = UDim2.new(0, 800, 0, 800)}):Play()
 
-        tocarSFX(300976136, 1, 1)
-
-        local fadeInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        TweenService:Create(brilho, fadeInfo, {ImageTransparency = 1, Size = UDim2.new(0, 800, 0, 800)}):Play()
-
-        for _, wrap in ipairs(textContainer:GetChildren()) do
-            if wrap:IsA("Frame") then
-                for _, obj in ipairs(wrap:GetChildren()) do
-                    if obj:IsA("TextLabel") then
-                        TweenService:Create(obj, fadeInfo, {TextTransparency = 1, Position = UDim2.new(0, 0, -0.3, 0)}):Play()
-                        if obj:FindFirstChild("UIStroke") then
-                            TweenService:Create(obj.UIStroke, fadeInfo, {Transparency = 1}):Play()
+            for _, wrap in ipairs(textContainer:GetChildren()) do
+                if wrap:IsA("Frame") then
+                    for _, obj in ipairs(wrap:GetChildren()) do
+                        if obj:IsA("TextLabel") then
+                            TweenService:Create(obj, fadeInfo, {TextTransparency = 1, Position = UDim2.new(0, 0, -0.3, 0)}):Play()
+                            if obj:FindFirstChild("UIStroke") then
+                                TweenService:Create(obj.UIStroke, fadeInfo, {Transparency = 1}):Play()
+                            end
                         end
                     end
                 end
             end
-        end
 
-        for _, obj in ipairs(center:GetChildren()) do
-            if obj:IsA("TextLabel") then
-                TweenService:Create(obj, fadeInfo, {TextTransparency = 1, TextSize = 0}):Play()
+            for _, obj in ipairs(center:GetChildren()) do
+                if obj:IsA("TextLabel") then
+                    TweenService:Create(obj, fadeInfo, {TextTransparency = 1, TextSize = 0}):Play()
+                end
             end
-        end
 
-        task.wait(0.5)
-        pcall(function()
-            runConn:Disconnect()
-            particlePart:Destroy()
+            task.wait(0.5)
+            pcall(function()
+                runConn:Disconnect()
+                particlePart:Destroy()
+            end)
+            introGui:Destroy()
+
+            if aoTerminar then aoTerminar() end
         end)
-        introGui:Destroy()
-
-        if aoTerminar then aoTerminar() end
     end)
 end
-
--- Roda a intro inicial
-tocarIntro()
 
 -- ==========================================
 -- GATILHO DAS AUTOMAÇÕES
 -- ==========================================
+-- Roda a intro inicial
+task.spawn(tocarIntro)
+
 task.spawn(auto_inject)
 
 if config.money_target then
