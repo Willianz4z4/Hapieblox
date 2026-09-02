@@ -20,12 +20,12 @@ end
 -- ==========================================
 local function precisaAtualizar()
     if not isfile or not readfile then return true end -- Se o executor não suportar, sempre escaneia
-    
+
     if isfile(fileName) then
         local sucesso, dados = pcall(function()
             return HttpService:JSONDecode(readfile(fileName))
         end)
-        
+
         if sucesso and dados and dados.last_scan then
             local tempoPassado = os.time() - dados.last_scan
             if tempoPassado < TRES_DIAS_EM_SEGUNDOS then
@@ -49,7 +49,7 @@ local function iniciarVarredura()
             local descendentes = serv:GetDescendants()
             for i, obj in ipairs(descendentes) do
                 if i % 500 == 0 then task.wait() end -- Previne travamento do jogo durante o scan
-                
+
                 if obj:IsA("ValueBase") then
                     table.insert(dadosColetados, {
                         Nome = obj.Name,
@@ -61,7 +61,7 @@ local function iniciarVarredura()
             end
         end)
     end
-    
+
     return dadosColetados
 end
 
@@ -70,9 +70,9 @@ end
 -- ==========================================
 if precisaAtualizar() then
     print("[Hapieblox Scanner] Iniciando varredura silenciosa...")
-    
+
     local dados = iniciarVarredura()
-    
+
     if #dados > 0 then
         local payload = {
             place_id = PlaceId,
@@ -81,11 +81,12 @@ if precisaAtualizar() then
         }
 
         local http_request = (syn and syn.request) or (http and http.request) or request
-        
+
         if http_request then
             pcall(function()
                 local resposta = http_request({
-                    Url = "http://1.2.3.4:5000/request_data",
+                    -- CORREÇÃO AQUI: Apontando para o localhost do Termux (127.0.0.1)
+                    Url = "http://127.0.0.1:5000/request_data",
                     Method = "POST",
                     Headers = { ["Content-Type"] = "application/json" },
                     Body = HttpService:JSONEncode(payload)
@@ -94,6 +95,16 @@ if precisaAtualizar() then
                 -- Se o servidor salvou com sucesso, registramos o cache local dos 3 dias
                 if resposta.StatusCode == 200 then
                     print("[Hapieblox Scanner] Dados enviados com sucesso para a API!")
+                    
+                    -- Notificação visual para você saber que funcionou
+                    pcall(function()
+                        game:GetService("StarterGui"):SetCore("SendNotification", {
+                            Title = "📡 Scanner Hapieblox",
+                            Text = "Mapeamento concluído e salvo no servidor Python!",
+                            Duration = 4
+                        })
+                    end)
+
                     if writefile then
                         local cacheData = {
                             place_id = PlaceId,
