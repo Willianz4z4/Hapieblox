@@ -21,7 +21,7 @@ local function precisaAtualizar()
         pcall(function() conteudo = readfile(fallbackName) end)
     end
 
-    if conteudo then                                                               
+    if conteudo then
         local sucesso, dados = pcall(function() return HttpService:JSONDecode(conteudo) end)
         if sucesso and dados and dados.last_scan then
             if os.time() - dados.last_scan < QUATRO_DIAS_EM_SEGUNDOS then
@@ -33,7 +33,7 @@ local function precisaAtualizar()
 end
 
 -- ==========================================
--- FILTRO SUPREMO (AGORA DIRETO NO ROBLOX)
+-- FILTRO SUPREMO PARA A INTERFACE / REPLICATED
 -- ==========================================
 local TIPOS_LIXO = {
     Color3Value = true, BrickColorValue = true, Vector3Value = true,
@@ -42,17 +42,17 @@ local TIPOS_LIXO = {
 
 local LIXO_CAMINHO = {
     "animate", "camera", "viewport", "worldmodel", "mesh", "texture", "decal", "sound",
-    "resources", "placetype", "gitinfo", "debug", "tvgui", "options", "appearance", 
-    "privateserver", "houses", "billholder", "inventory", "jointime", "hospital", 
-    "towing", "version", "guidelines", "timestamp", "log", "settings", "profile", 
-    "loading", "visualmoney", "visualblockbux", "playerscripts", "hudhandler", 
-    "tutorial", "testerwatermark", "easter", "aprilfools", "duck", "ikea", 
-    "rewardtime", "trophy", "reminder", "badge", "coregui", "startergui", 
-    "assetload", "ailments", "ambiance", "avatareditor", "dailiesapp", "backpack", 
-    "focuspet", "subscription", "milestone", "taxidestination", "tradeapp", 
-    "taxitimer", "mannequin", "petrecycler", "journalapp", "paintinventory", 
-    "toolapp", "screentap", "roleplaypay", "promos", "dialog", "ftue", "friend", 
-    "news", "party", "performance", "peopleinside", "minigame", "jackbox", 
+    "resources", "placetype", "gitinfo", "debug", "tvgui", "options", "appearance",
+    "privateserver", "houses", "billholder", "inventory", "jointime", "hospital",
+    "towing", "version", "guidelines", "timestamp", "log", "settings", "profile",
+    "loading", "visualmoney", "visualblockbux", "playerscripts", "hudhandler",
+    "tutorial", "testerwatermark", "easter", "aprilfools", "duck", "ikea",
+    "rewardtime", "trophy", "reminder", "badge", "coregui", "startergui",
+    "assetload", "ailments", "ambiance", "avatareditor", "dailiesapp", "backpack",
+    "focuspet", "subscription", "milestone", "taxidestination", "tradeapp",
+    "taxitimer", "mannequin", "petrecycler", "journalapp", "paintinventory",
+    "toolapp", "screentap", "roleplaypay", "promos", "dialog", "ftue", "friend",
+    "news", "party", "performance", "peopleinside", "minigame", "jackbox",
     "housepurchase", "merch", "radio", "surfacegui"
 }
 
@@ -93,40 +93,27 @@ local function isItemImportante(obj)
         if string.find(nomeLower, lixo) then return false end
     end
 
-    -- ==========================================
-    -- NOVO: FILTRO DE CONTEÚDO (MATA O LIXO NA RAIZ)
-    -- ==========================================
+    -- Filtros de Texto da UI
     if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("StringValue") then
         local val = ""
         pcall(function() val = string.lower(obterValorSeguro(obj)) end)
-        
-        if val == "" or val == "nil" then return false end
 
-        -- 1. Ignora textos com HTML/RichText (<font>, <b>, <i>)
+        if val == "" or val == "nil" then return false end
         if string.find(val, "<font") or string.find(val, "<i") or string.find(val, "<b") then return false end
-        
-        -- 2. Ignora relógios (ex: 24:00:00 ou 2:40)
         if string.find(val, "%d+:%d+") then return false end
-        
-        -- 3. Ignora frações (ex: 1/3, 0/255)
         if string.find(val, "/") and not string.find(nomeLower, "xp") and not string.find(nomeLower, "level") then return false end
-        
-        -- 4. Ignora multiplicadores de interface (ex: x99, x1000)
         if string.match(val, "^x%d+") then return false end
-        
-        -- 5. Ignora palavras focadas em loja, sistema ou avisos
+
         local badWords = {"buy", "purchase", "off", "fps", "reward", "page", "hang tight", "last seen", "month", "days"}
         for _, word in ipairs(badWords) do
             if string.find(val, word) then return false end
         end
 
-        -- 6. Se for um botão/texto, tem que ter PELO MENOS UM número. Se for só letra, é lixo.
         if (obj:IsA("TextLabel") or obj:IsA("TextButton")) and not string.match(val, "%d") then
             return false
         end
     end
 
-    -- Aprova apenas se for um valor real
     if obj:IsA("IntValue") or obj:IsA("NumberValue") or obj:IsA("StringValue") or obj:IsA("TextLabel") or obj:IsA("TextButton") then
         return true
     end
@@ -135,11 +122,38 @@ local function isItemImportante(obj)
 end
 
 -- ==========================================
--- VARREDURA FOCADA
+-- SISTEMA DE VARREDURA HÍBRIDA
 -- ==========================================
 local function iniciarVarredura()
     local dadosColetados = {}
-    local nomesVistos = {} 
+    local nomesVistos = {} -- Rastreamento para não pegar coisas iguais
+    
+    -- 1. PASSO OURO: Buscar nas pastas oficiais de status do jogador (100% de Confiabilidade)
+    local PASTAS_STATUS = {"leaderstats", "Stats", "Data", "PlayerData", "leaderboard", "Currency"}
+    
+    for _, nomePasta in ipairs(PASTAS_STATUS) do
+        local pasta = LocalPlayer:FindFirstChild(nomePasta)
+        if pasta then
+            for _, stat in ipairs(pasta:GetChildren()) do
+                if stat:IsA("IntValue") or stat:IsA("NumberValue") or stat:IsA("StringValue") then
+                    local chaveRastreio = stat.Name
+                    
+                    if not nomesVistos[chaveRastreio] then
+                        table.insert(dadosColetados, {
+                            Nome = stat.Name,
+                            Caminho = stat:GetFullName(),
+                            Valor = tostring(stat.Value),
+                            Tipo = stat.ClassName,
+                            Confiabilidade = "Alta (Status Oficial)"
+                        })
+                        nomesVistos[chaveRastreio] = true -- Bloqueia esse nome no resto da varredura
+                    end
+                end
+            end
+        end
+    end
+
+    -- 2. PASSO PROFUNDO: Buscar no resto do jogo usando o Filtro Supremo (Confiabilidade Média/Baixa)
     local servicos = { LocalPlayer, game:GetService("ReplicatedStorage") }
 
     for _, serv in ipairs(servicos) do
@@ -148,10 +162,12 @@ local function iniciarVarredura()
             for i, obj in ipairs(descendentes) do
                 if i % 500 == 0 then task.wait() end
 
+                -- Verifica se é um item válido e se passa no filtro supremo
                 if obj:IsA("ValueBase") or obj:IsA("TextLabel") or obj:IsA("TextButton") then
                     if isItemImportante(obj) then
-                        local chaveRastreio = obj.Name -- Rastreamento para não pegar coisas iguais
-                        
+                        local chaveRastreio = obj.Name 
+
+                        -- Só adiciona se o Passo 1 (Leaderstats) já não pegou essa moeda
                         if not nomesVistos[chaveRastreio] then
                             local valorSeguro = "nil"
                             pcall(function() valorSeguro = obterValorSeguro(obj) end)
@@ -160,9 +176,9 @@ local function iniciarVarredura()
                                 Nome = obj.Name,
                                 Caminho = obj:GetFullName(),
                                 Valor = valorSeguro,
-                                Tipo = obj.ClassName
+                                Tipo = obj.ClassName,
+                                Confiabilidade = "Baixa (Interface/Replicated)"
                             })
-                            
                             nomesVistos[chaveRastreio] = true
                         end
                     end
@@ -170,6 +186,7 @@ local function iniciarVarredura()
             end
         end)
     end
+    
     return dadosColetados
 end
 
