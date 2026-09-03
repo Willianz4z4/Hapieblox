@@ -13,7 +13,7 @@ if isfolder and not isfolder(folderName) then
 end
 
 -- ==========================================
--- SISTEMA DE CACHE
+-- SISTEMA DE CACHE BLINDADO
 -- ==========================================
 local function precisaAtualizar()
     if not isfile or not readfile then return true end
@@ -25,7 +25,7 @@ local function precisaAtualizar()
         pcall(function() conteudo = readfile(fallbackName) end)
     end
 
-    if conteudo then                                                                       
+    if conteudo then                                                               
         local sucesso, dados = pcall(function()
             return HttpService:JSONDecode(conteudo)
         end)
@@ -42,15 +42,20 @@ local function precisaAtualizar()
 end
 
 -- ==========================================
--- FILTRO "MODO DEUS" (V6.21 NATIVO)
+-- FILTRO UNIVERSAL (V8.0 NATIVO)
 -- ==========================================
 local TIPOS_LIXO = {
     Color3Value = true, BrickColorValue = true, Vector3Value = true,
     CFrameValue = true, BoolValue = true, ObjectValue = true, RayValue = true
 }
 
+local LIXO_VISUAL = {
+    "animate", "camera", "gui", "viewport", "worldmodel", "color",
+    "size", "position", "transparency", "mesh", "texture", "decal", "sound"
+}
+
 local function isItemImportante(obj)
-    -- 1. Corta tipos inúteis na raiz
+    -- 1. Corta tipos físicos/inúteis na raiz
     if TIPOS_LIXO[obj.ClassName] then return false end
 
     -- 2. Filtro de Privacidade: Ignorar dados de OUTROS jogadores
@@ -64,35 +69,34 @@ local function isItemImportante(obj)
     end
 
     local caminhoLower = obj:GetFullName():lower()
+    local nomeLower = obj.Name:lower()
 
-    -- 3. BARRICADA RESTRITA: Só passa o que for do ReplicatedStorage.Stats
-    if string.find(caminhoLower, "replicatedstorage.stats") then
-        
-        -- 4. Ouro Puro: Moedas, Humor, Habilidades, Empregos, Coordenadas e Streak
-        if string.find(caminhoLower, "money") or
-           string.find(caminhoLower, "blockbux") or
-           string.find(caminhoLower, "eventcurrency") or
-           string.find(caminhoLower, "schoolcredits") or
-           string.find(caminhoLower, "mooddata") or
-           string.find(caminhoLower, "skilldata") or
-           string.find(caminhoLower, "job") or
-           string.find(caminhoLower, "coords") or
-           string.find(caminhoLower, "visitstreak") then
-            return true
+    -- 3. BARRICADA ANTI-LIXO UNIVERSAL: Corta na raiz coisas visuais
+    for _, lixo in ipairs(LIXO_VISUAL) do
+        if string.find(caminhoLower, lixo) or string.find(nomeLower, lixo) then
+            return false
         end
     end
 
-    -- Removemos a regra antiga que deixava passar as GUIs (TVGui, Animações, etc)
+    -- 4. CAPTURA DE OURO (Qualquer jogo)
+    -- Se for um valor inteiro, número duplo ou string, nós mandamos pro Python julgar.
+    -- O Python (V8.0) é ultra rápido e tem a inteligência heurística para separar o ouro.
+    if obj:IsA("IntValue") or obj:IsA("NumberValue") or obj:IsA("StringValue") then
+        return true
+    end
+
     return false
 end
 
 -- ==========================================
--- VARREDURA FOCADA
+-- VARREDURA FOCADA (AGORA UNIVERSAL E SEM DUPLICATAS)
 -- ==========================================
 local function iniciarVarredura()
     local dadosColetados = {}
-    -- Focando a varredura apenas no ReplicatedStorage para otimização máxima de performance
-    local servicos = { game:GetService("ReplicatedStorage") }
+    local nomesVistos = {} -- Tabela de rastreamento para bloquear variáveis duplicadas
+    
+    -- Agora varremos o LocalPlayer (leaderstats de 99% dos jogos) e o ReplicatedStorage
+    local servicos = { LocalPlayer, game:GetService("ReplicatedStorage") }
 
     for _, serv in ipairs(servicos) do
         pcall(function()
@@ -102,19 +106,26 @@ local function iniciarVarredura()
 
                 if obj:IsA("ValueBase") then
                     if isItemImportante(obj) then
-                        local valorSeguro = "nil"
-                        pcall(function()
-                            if obj.Value ~= nil then
-                                valorSeguro = tostring(obj.Value)
-                            end
-                        end)
+                        -- REGRA DE BLOQUEIO: Se o nome já existe na nossa tabela, ignoramos.
+                        -- Isso impede que "Money" em ReplicatedStorage e "Money" em leaderstats repitam no JSON.
+                        if not nomesVistos[obj.Name] then
+                            local valorSeguro = "nil"
+                            pcall(function()
+                                if obj.Value ~= nil then
+                                    valorSeguro = tostring(obj.Value)
+                                end
+                            end)
 
-                        table.insert(dadosColetados, {
-                            Nome = obj.Name,
-                            Caminho = obj:GetFullName(),
-                            Valor = valorSeguro,
-                            Tipo = obj.ClassName
-                        })
+                            table.insert(dadosColetados, {
+                                Nome = obj.Name,
+                                Caminho = obj:GetFullName(),
+                                Valor = valorSeguro,
+                                Tipo = obj.ClassName
+                            })
+                            
+                            -- Marca o nome como capturado para que a próxima duplicata seja ignorada
+                            nomesVistos[obj.Name] = true
+                        end
                     end
                 end
             end
@@ -124,7 +135,7 @@ local function iniciarVarredura()
 end
 
 -- ==========================================
--- EXECUÇÃO PRINCIPAL
+-- EXECUÇÃO PRINCIPAL (SEM PORTAS / APENAS ARQUIVO)
 -- ==========================================
 if precisaAtualizar() then
     local dados = iniciarVarredura()
@@ -142,27 +153,15 @@ if precisaAtualizar() then
             return HttpService:JSONEncode(payload)
         end)
 
-        if sucessoJson then
-            if writefile then
-                local sucessoWrite = pcall(function()
-                    writefile(fileName, corpoJson)
-                end)
-                if not sucessoWrite then
-                    pcall(function() writefile(fallbackName, corpoJson) end)
-                end
-            end
-
-            local http_request = (syn and syn.request) or (http and http.request) or request
-            if http_request then
-                pcall(function()
-                    http_request({
-                        Url = "http://127.0.0.1:5000/request_data",
-                        Method = "POST",
-                        Headers = { ["Content-Type"] = "application/json" },
-                        Body = corpoJson
-                    })
-                end)
+        if sucessoJson and writefile then
+            local sucessoWrite = pcall(function()
+                writefile(fileName, corpoJson)
+            end)
+            if not sucessoWrite then
+                pcall(function() writefile(fallbackName, corpoJson) end)
             end
         end
+        -- OBS: Comunicação via porta 127.0.0.1:5000 removida.
+        -- Agora dependemos exclusivamente do Python vigiando o arquivo .json (Delta Watcher).
     end
 end

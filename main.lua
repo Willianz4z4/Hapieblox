@@ -84,8 +84,8 @@ local config = carregarConfig()
 -- 🛑 TRAVA DE SEGURANÇA (KILL SWITCH) 🛑
 -- ==========================================
 if not config.atived then
-    tocarSFX(2811444158, 0.8, 0.6) 
-    
+    tocarSFX(2811444158, 0.8, 0.6)
+
     pcall(function()
         game:GetService("StarterGui"):SetCore("SendNotification", {
             Title = "⏸️ Hapieblox Standby",
@@ -93,7 +93,7 @@ if not config.atived then
             Duration = 5
         })
     end)
-    return 
+    return
 end
 
 -- ==========================================
@@ -168,19 +168,19 @@ local function auto_inject()
         end
     end
 
-    if globaisInjetados > 0 or locaisInjetados > 0 then
-        task.spawn(function()
-            task.wait(1)
-            tocarSFX(2811444158, 0.8, 1.2)
-            pcall(function()
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "💉 Hapieblox Inject",
-                    Text = string.format("Injetados:\n🌍 %d Globais\n📍 %d Locais", globaisInjetados, locaisInjetados),
-                    Duration = 6
-                })
-            end)
+    -- Agora a notificação aparece SEMPRE que o auto_loading for True, 
+    -- independente se achou 0 ou 10 scripts para injetar.
+    task.spawn(function()
+        task.wait(1)
+        tocarSFX(2811444158, 0.8, 1.2)
+        pcall(function()
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "💉 Hapieblox Auto-Inject",
+                Text = string.format("Sistema Ativo!\n🌍 %d Globais\n📍 %d Locais", globaisInjetados, locaisInjetados),
+                Duration = 6
+            })
         end)
-    end
+    end)
 end
 
 -- ==========================================
@@ -241,13 +241,13 @@ local function tocarIntro(aoTerminar)
         local pe1 = Instance.new("ParticleEmitter")
         pe1.Texture = "rbxassetid://243660364"
         pe1.LightEmission = 1
-        
+
         pe1.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 200)),
             ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
             ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 150, 255))
         })
-        
+
         pe1.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 2), NumberSequenceKeypoint.new(1, 0)})
         pe1.Rate = 0; pe1.Speed = NumberRange.new(25, 60); pe1.Lifetime = NumberRange.new(1.2, 2.5)
         pe1.SpreadAngle = Vector2.new(180, 180); pe1.Parent = particlePart
@@ -415,43 +415,29 @@ local function tocarIntro(aoTerminar)
 end
 
 -- ==========================================
--- GATILHO DAS AUTOMAÇÕES (FUNÇÃO DE ESPERA)
+-- GATILHO CENTRAL DO AUTO-EXTRACT
 -- ==========================================
-local function iniciarSistemasFarm()
-    -- 1. Injeta os scripts de usuário
-    task.spawn(auto_inject)
-
-    -- 2. Inicia o Scanner DIRETO na entrada do jogo (O scanner mesmo valida os 3 dias)
+local function dispararAutoExtract()
     if config.money_target then
         task.spawn(function()
             pcall(function()
                 loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))()
             end)
         end)
-        
-        -- Loop de escuta para comandos futuros da API
-        task.spawn(function()
-            local http_request = (syn and syn.request) or (http and http.request) or request
-            if http_request then
-                while task.wait(10) do
-                    pcall(function()
-                        local resposta = http_request({
-                            Url = "http://1.2.3.4:5000/check_task",
-                            Method = "GET"
-                        })
-                        if resposta.StatusCode == 200 then
-                            local taskData = HttpService:JSONDecode(resposta.Body)
-                            if taskData and taskData.action == "run_scanner" then
-                                loadstring(game:HttpGet(rawScannerUrl .. "?t=" .. tostring(tick())))()
-                            end
-                        end
-                    end)
-                end
-            end
-        end)
     end
+end
 
-    -- 3. Inicia Auto-Updater do Hapieblox
+-- ==========================================
+-- INÍCIO DOS SISTEMAS
+-- ==========================================
+local function iniciarSistemasFarm()
+    -- 1. Injeta os scripts de usuário (Agora sempre notifica se estiver ligado)
+    task.spawn(auto_inject)
+
+    -- 2. Disparo imediato do Auto-Extract na entrada
+    dispararAutoExtract()
+
+    -- 3. Inicia Auto-Updater do Hapieblox (Sem chamadas API inúteis)
     task.spawn(function()
         while true do
             task.wait(15)
