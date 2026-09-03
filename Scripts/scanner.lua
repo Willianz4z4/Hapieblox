@@ -42,23 +42,28 @@ local function precisaAtualizar()
 end
 
 -- ==========================================
--- FILTRO UNIVERSAL (V8.0 NATIVO)
+-- FILTRO UNIVERSAL (V9.0 NATIVO - LEITOR DE TELA)
 -- ==========================================
 local TIPOS_LIXO = {
     Color3Value = true, BrickColorValue = true, Vector3Value = true,
     CFrameValue = true, BoolValue = true, ObjectValue = true, RayValue = true
 }
 
+-- Removido o "gui" para permitir a leitura da interface gráfica (PlayerGui)
 local LIXO_VISUAL = {
-    "animate", "camera", "gui", "viewport", "worldmodel", "color",
-    "size", "position", "transparency", "mesh", "texture", "decal", "sound"
+    "animate", "camera", "viewport", "worldmodel",
+    "mesh", "texture", "decal", "sound",
+    "resources", "placetype", "gitinfo", "debug"
+}
+
+-- Palavras que bloqueiam apenas se forem o NOME EXATO do item
+local LIXO_NOME_EXATO = {
+    "color", "size", "position", "transparency", "visible", "zindex", "layoutorder"
 }
 
 local function isItemImportante(obj)
-    -- 1. Corta tipos físicos/inúteis na raiz
     if TIPOS_LIXO[obj.ClassName] then return false end
 
-    -- 2. Filtro de Privacidade: Ignorar dados de OUTROS jogadores
     local localName = LocalPlayer and LocalPlayer.Name or ""
     local pai = obj.Parent
     while pai and pai ~= game do
@@ -71,31 +76,48 @@ local function isItemImportante(obj)
     local caminhoLower = obj:GetFullName():lower()
     local nomeLower = obj.Name:lower()
 
-    -- 3. BARRICADA ANTI-LIXO UNIVERSAL: Corta na raiz coisas visuais
     for _, lixo in ipairs(LIXO_VISUAL) do
         if string.find(caminhoLower, lixo) or string.find(nomeLower, lixo) then
             return false
         end
     end
 
-    -- 4. CAPTURA DE OURO (Qualquer jogo)
-    -- Se for um valor inteiro, número duplo ou string, nós mandamos pro Python julgar.
-    -- O Python (V8.0) é ultra rápido e tem a inteligência heurística para separar o ouro.
+    for _, lixo in ipairs(LIXO_NOME_EXATO) do
+        if nomeLower == lixo then
+            return false
+        end
+    end
+
+    -- CAPTURA DE VARIÁVEIS CLÁSSICAS
     if obj:IsA("IntValue") or obj:IsA("NumberValue") or obj:IsA("StringValue") then
         return true
+    end
+
+    -- NOVO: CAPTURA DE TELA (O ÚLTIMO RECURSO UNIVERSAL)
+    -- Se for um texto na tela do jogador e contiver números, nós capturamos!
+    if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+        if obj.Text ~= "" and string.match(obj.Text, "%d") then
+            return true
+        end
     end
 
     return false
 end
 
+local function obterValorSeguro(obj)
+    if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+        return obj.Text
+    end
+    return tostring(obj.Value)
+end
+
 -- ==========================================
--- VARREDURA FOCADA (AGORA UNIVERSAL E SEM DUPLICATAS)
+-- VARREDURA FOCADA (AGORA LÊ A TELA DO JOGADOR)
 -- ==========================================
 local function iniciarVarredura()
     local dadosColetados = {}
-    local nomesVistos = {} -- Tabela de rastreamento para bloquear variáveis duplicadas
+    local nomesVistos = {} 
     
-    -- Agora varremos o LocalPlayer (leaderstats de 99% dos jogos) e o ReplicatedStorage
     local servicos = { LocalPlayer, game:GetService("ReplicatedStorage") }
 
     for _, serv in ipairs(servicos) do
@@ -104,16 +126,15 @@ local function iniciarVarredura()
             for i, obj in ipairs(descendentes) do
                 if i % 500 == 0 then task.wait() end
 
-                if obj:IsA("ValueBase") then
+                if obj:IsA("ValueBase") or obj:IsA("TextLabel") or obj:IsA("TextButton") then
                     if isItemImportante(obj) then
-                        -- REGRA DE BLOQUEIO: Se o nome já existe na nossa tabela, ignoramos.
-                        -- Isso impede que "Money" em ReplicatedStorage e "Money" em leaderstats repitam no JSON.
-                        if not nomesVistos[obj.Name] then
+                        -- Se for TextLabel, o nome importa menos que o caminho (evita bloquear 2 botões com mesmo nome)
+                        local chaveRastreio = obj:IsA("TextLabel") and obj:GetFullName() or obj.Name
+
+                        if not nomesVistos[chaveRastreio] then
                             local valorSeguro = "nil"
                             pcall(function()
-                                if obj.Value ~= nil then
-                                    valorSeguro = tostring(obj.Value)
-                                end
+                                valorSeguro = obterValorSeguro(obj)
                             end)
 
                             table.insert(dadosColetados, {
@@ -123,8 +144,7 @@ local function iniciarVarredura()
                                 Tipo = obj.ClassName
                             })
                             
-                            -- Marca o nome como capturado para que a próxima duplicata seja ignorada
-                            nomesVistos[obj.Name] = true
+                            nomesVistos[chaveRastreio] = true
                         end
                     end
                 end
@@ -135,7 +155,7 @@ local function iniciarVarredura()
 end
 
 -- ==========================================
--- EXECUÇÃO PRINCIPAL (SEM PORTAS / APENAS ARQUIVO)
+-- EXECUÇÃO PRINCIPAL
 -- ==========================================
 if precisaAtualizar() then
     local dados = iniciarVarredura()
@@ -161,7 +181,5 @@ if precisaAtualizar() then
                 pcall(function() writefile(fallbackName, corpoJson) end)
             end
         end
-        -- OBS: Comunicação via porta 127.0.0.1:5000 removida.
-        -- Agora dependemos exclusivamente do Python vigiando o arquivo .json (Delta Watcher).
     end
 end
