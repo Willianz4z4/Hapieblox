@@ -13,7 +13,7 @@ if isfolder and not isfolder(folderName) then
 end
 
 -- ==========================================
--- SISTEMA DE CACHE BLINDADO
+-- SISTEMA DE CACHE
 -- ==========================================
 local function precisaAtualizar()
     if not isfile or not readfile then return true end
@@ -42,97 +42,63 @@ local function precisaAtualizar()
 end
 
 -- ==========================================
--- FILTRO ESTRUTURAL SUPER RIGOROSO (A NATA DA COISA)
+-- FILTRO "MODO DEUS" (V6.21 NATIVO)
 -- ==========================================
-
--- Tipos que NUNCA serão dinheiro/nível. Cortamos na raiz.
 local TIPOS_LIXO = {
-    Color3Value = true,      -- Cores
-    BrickColorValue = true,  -- Cores de blocos
-    Vector3Value = true,     -- Posições 3D
-    CFrameValue = true,      -- Rotações/Posições
-    BoolValue = true,        -- Verdadeiro/Falso (IsLoaded, IsSaving)
-    ObjectValue = true,      -- Referências a partes do mapa
-    RayValue = true          -- Lasers/Física
-}
-
--- Palavras no nome que indicam lixo visual ou de configuração
-local PALAVRAS_LIXO = {
-    "color", "size", "position", "scale", "offset", "transparency",
-    "rotation", "weight", "animate", "title", "text", "image",
-    "sound", "volume", "camera", "layout", "stroke", "corner",
-    "effect", "loading", "saving", "message", "viewport", "shadow"
+    Color3Value = true, BrickColorValue = true, Vector3Value = true,
+    CFrameValue = true, BoolValue = true, ObjectValue = true, RayValue = true
 }
 
 local function isItemImportante(obj)
-    -- 1. BARRADO NA PORTA: É um tipo de valor visual/físico? Lixo!
+    -- 1. Corta tipos inúteis na raiz
     if TIPOS_LIXO[obj.ClassName] then return false end
 
-    local nomeLower = obj.Name:lower()
-
-    -- 2. BARRADO NO NOME: Tem nome de configuração de tela? Lixo!
-    for _, palavra in ipairs(PALAVRAS_LIXO) do
-        if string.find(nomeLower, palavra) then
-            return false
-        end
-    end
-
-    -- [NOVO] 3. FILTRO DE PRIVACIDADE: Ignorar dados de OUTROS jogadores
+    -- 2. Filtro de Privacidade: Ignorar dados de OUTROS jogadores
     local localName = LocalPlayer and LocalPlayer.Name or ""
     local pai = obj.Parent
     while pai and pai ~= game do
-        -- Se estiver dentro da nossa própria pasta, está seguro.
-        if pai.Name == localName then
-            break
-        end
-        
-        -- Se for um "Player" e não formos nós, lixo!
-        if pai:IsA("Player") and pai.Name ~= localName then
-            return false
-        end
-        
-        -- Se a pasta tem o nome de OUTRO jogador que está no servidor (ex: ReplicatedStorage.Stats.catloverforever2094), lixo!
-        if pai.Name ~= localName and Players:FindFirstChild(pai.Name) then
-            return false
-        end
-        
+        if pai.Name == localName then break end
+        if pai:IsA("Player") and pai.Name ~= localName then return false end
+        if pai.Name ~= localName and Players:FindFirstChild(pai.Name) then return false end
         pai = pai.Parent
     end
 
     local caminhoLower = obj:GetFullName():lower()
 
-    -- 4. PASSAPORTE VIP: Se estiver nas pastas de status/data, é ouro puro.
-    if string.find(caminhoLower, "leaderstats") or
-       string.find(caminhoLower, "playerdata") or
-       string.find(caminhoLower, "stats") or
-       string.find(caminhoLower, "currency") then
-        return true
-    end
-
-    -- 5. REGRA DA INTERFACE (GUI): Só passa se sobreviveu aos filtros anteriores.
-    pai = obj.Parent
-    while pai and pai ~= game do
-        if pai:IsA("ScreenGui") or pai:IsA("SurfaceGui") or pai:IsA("BillboardGui") or pai:IsA("PlayerGui") or pai:IsA("StarterGui") then
+    -- 3. BARRICADA RESTRITA: Só passa o que for do ReplicatedStorage.Stats
+    if string.find(caminhoLower, "replicatedstorage.stats") then
+        
+        -- 4. Ouro Puro: Moedas, Humor, Habilidades, Empregos, Coordenadas e Streak
+        if string.find(caminhoLower, "money") or
+           string.find(caminhoLower, "blockbux") or
+           string.find(caminhoLower, "eventcurrency") or
+           string.find(caminhoLower, "schoolcredits") or
+           string.find(caminhoLower, "mooddata") or
+           string.find(caminhoLower, "skilldata") or
+           string.find(caminhoLower, "job") or
+           string.find(caminhoLower, "coords") or
+           string.find(caminhoLower, "visitstreak") then
             return true
         end
-        pai = pai.Parent
     end
 
+    -- Removemos a regra antiga que deixava passar as GUIs (TVGui, Animações, etc)
     return false
 end
 
 -- ==========================================
--- VARREDURA FOCADA NO FARM
+-- VARREDURA FOCADA
 -- ==========================================
 local function iniciarVarredura()
     local dadosColetados = {}
-    local servicos = { workspace, Players, game:GetService("ReplicatedStorage") }
+    -- Focando a varredura apenas no ReplicatedStorage para otimização máxima de performance
+    local servicos = { game:GetService("ReplicatedStorage") }
 
     for _, serv in ipairs(servicos) do
         pcall(function()
             local descendentes = serv:GetDescendants()
             for i, obj in ipairs(descendentes) do
-                if i % 1000 == 0 then task.wait() end
+                if i % 500 == 0 then task.wait() end
 
                 if obj:IsA("ValueBase") then
                     if isItemImportante(obj) then
