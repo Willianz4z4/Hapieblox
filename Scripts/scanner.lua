@@ -72,13 +72,22 @@ end
 local function isItemImportante(obj)
     if TIPOS_LIXO[obj.ClassName] then return false end
 
-    -- Bloqueia dados vazando de outros jogadores
+    -- BLINDAGEM ANTI-INTRUSO APRIMORADA
     local localName = LocalPlayer and LocalPlayer.Name or ""
+    local localUserId = LocalPlayer and tostring(LocalPlayer.UserId) or ""
     local pai = obj.Parent
+    
     while pai and pai ~= game do
-        if pai.Name == localName then break end
+        -- Se a pasta é literalmente o nosso nome ou nosso ID, está seguro.
+        if pai.Name == localName or pai.Name == localUserId then break end
+        
+        -- Se for a raiz de outro jogador ativo
         if pai:IsA("Player") and pai.Name ~= localName then return false end
-        if pai.Name ~= localName and Players:FindFirstChild(pai.Name) then return false end
+        if Players:FindFirstChild(pai.Name) and pai.Name ~= localName then return false end
+        
+        -- NOVA REGRA: Se for um personagem (avatar) jogado no mapa que não seja o nosso
+        if pai:IsA("Model") and pai:FindFirstChildOfClass("Humanoid") and pai.Name ~= localName then return false end
+        
         pai = pai.Parent
     end
 
@@ -126,18 +135,18 @@ end
 -- ==========================================
 local function iniciarVarredura()
     local dadosColetados = {}
-    local nomesVistos = {} -- Rastreamento para não pegar coisas iguais
-    
-    -- 1. PASSO OURO: Buscar nas pastas oficiais de status do jogador (100% de Confiabilidade)
+    local nomesVistos = {} 
+
+    -- 1. PASSO OURO: Buscar nas pastas oficiais de status
     local PASTAS_STATUS = {"leaderstats", "Stats", "Data", "PlayerData", "leaderboard", "Currency"}
-    
+
     for _, nomePasta in ipairs(PASTAS_STATUS) do
         local pasta = LocalPlayer:FindFirstChild(nomePasta)
         if pasta then
             for _, stat in ipairs(pasta:GetChildren()) do
                 if stat:IsA("IntValue") or stat:IsA("NumberValue") or stat:IsA("StringValue") then
                     local chaveRastreio = stat.Name
-                    
+
                     if not nomesVistos[chaveRastreio] then
                         table.insert(dadosColetados, {
                             Nome = stat.Name,
@@ -146,14 +155,14 @@ local function iniciarVarredura()
                             Tipo = stat.ClassName,
                             Confiabilidade = "Alta (Status Oficial)"
                         })
-                        nomesVistos[chaveRastreio] = true -- Bloqueia esse nome no resto da varredura
+                        nomesVistos[chaveRastreio] = true 
                     end
                 end
             end
         end
     end
 
-    -- 2. PASSO PROFUNDO: Buscar no resto do jogo usando o Filtro Supremo (Confiabilidade Média/Baixa)
+    -- 2. PASSO PROFUNDO: Buscar no resto do jogo usando o Filtro Supremo
     local servicos = { LocalPlayer, game:GetService("ReplicatedStorage") }
 
     for _, serv in ipairs(servicos) do
@@ -162,12 +171,10 @@ local function iniciarVarredura()
             for i, obj in ipairs(descendentes) do
                 if i % 500 == 0 then task.wait() end
 
-                -- Verifica se é um item válido e se passa no filtro supremo
                 if obj:IsA("ValueBase") or obj:IsA("TextLabel") or obj:IsA("TextButton") then
                     if isItemImportante(obj) then
-                        local chaveRastreio = obj.Name 
+                        local chaveRastreio = obj.Name
 
-                        -- Só adiciona se o Passo 1 (Leaderstats) já não pegou essa moeda
                         if not nomesVistos[chaveRastreio] then
                             local valorSeguro = "nil"
                             pcall(function() valorSeguro = obterValorSeguro(obj) end)
@@ -186,7 +193,7 @@ local function iniciarVarredura()
             end
         end)
     end
-    
+
     return dadosColetados
 end
 
