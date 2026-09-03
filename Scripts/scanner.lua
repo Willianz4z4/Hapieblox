@@ -25,7 +25,7 @@ local function precisaAtualizar()
         pcall(function() conteudo = readfile(fallbackName) end)
     end
 
-    if conteudo then
+    if conteudo then                                                                       
         local sucesso, dados = pcall(function()
             return HttpService:JSONDecode(conteudo)
         end)
@@ -60,7 +60,7 @@ local TIPOS_LIXO = {
 local PALAVRAS_LIXO = {
     "color", "size", "position", "scale", "offset", "transparency",
     "rotation", "weight", "animate", "title", "text", "image",
-    "sound", "volume", "camera", "layout", "stroke", "corner", 
+    "sound", "volume", "camera", "layout", "stroke", "corner",
     "effect", "loading", "saving", "message", "viewport", "shadow"
 }
 
@@ -77,18 +77,40 @@ local function isItemImportante(obj)
         end
     end
 
+    -- [NOVO] 3. FILTRO DE PRIVACIDADE: Ignorar dados de OUTROS jogadores
+    local localName = LocalPlayer and LocalPlayer.Name or ""
+    local pai = obj.Parent
+    while pai and pai ~= game do
+        -- Se estiver dentro da nossa própria pasta, está seguro.
+        if pai.Name == localName then
+            break
+        end
+        
+        -- Se for um "Player" e não formos nós, lixo!
+        if pai:IsA("Player") and pai.Name ~= localName then
+            return false
+        end
+        
+        -- Se a pasta tem o nome de OUTRO jogador que está no servidor (ex: ReplicatedStorage.Stats.catloverforever2094), lixo!
+        if pai.Name ~= localName and Players:FindFirstChild(pai.Name) then
+            return false
+        end
+        
+        pai = pai.Parent
+    end
+
     local caminhoLower = obj:GetFullName():lower()
 
-    -- 3. PASSAPORTE VIP: Se estiver nas pastas de status/data, é ouro puro.
-    if string.find(caminhoLower, "leaderstats") or 
-       string.find(caminhoLower, "playerdata") or 
+    -- 4. PASSAPORTE VIP: Se estiver nas pastas de status/data, é ouro puro.
+    if string.find(caminhoLower, "leaderstats") or
+       string.find(caminhoLower, "playerdata") or
        string.find(caminhoLower, "stats") or
        string.find(caminhoLower, "currency") then
         return true
     end
 
-    -- 4. REGRA DA INTERFACE (GUI): Só passa se sobreviveu aos filtros 1 e 2.
-    local pai = obj.Parent
+    -- 5. REGRA DA INTERFACE (GUI): Só passa se sobreviveu aos filtros anteriores.
+    pai = obj.Parent
     while pai and pai ~= game do
         if pai:IsA("ScreenGui") or pai:IsA("SurfaceGui") or pai:IsA("BillboardGui") or pai:IsA("PlayerGui") or pai:IsA("StarterGui") then
             return true
