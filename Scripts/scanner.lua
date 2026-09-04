@@ -6,10 +6,16 @@ local PlaceId = tostring(game.PlaceId)
 local folderName = "Hapieblox_Farm"
 local fileName = folderName .. "/game_" .. PlaceId .. "_farm.json"
 local fallbackName = "game_" .. PlaceId .. "_farm.json"
+local targetFolder = folderName .. "/targets_active"
+local targetFile = targetFolder .. "/" .. PlaceId .. ".json"
+
 local QUATRO_DIAS_EM_SEGUNDOS = 4 * 24 * 60 * 60 -- 345.600 segundos
 
 if isfolder and not isfolder(folderName) then
     pcall(function() makefolder(folderName) end)
+end
+if isfolder and not isfolder(targetFolder) then
+    pcall(function() makefolder(targetFolder) end)
 end
 
 local function precisaAtualizar()
@@ -33,7 +39,7 @@ local function precisaAtualizar()
 end
 
 -- ==========================================
--- FILTRO SUPREMO PARA A INTERFACE / REPLICATED
+-- FILTRO SUPREMO PARA A INTERFACE
 -- ==========================================
 local TIPOS_LIXO = {
     Color3Value = true, BrickColorValue = true, Vector3Value = true,
@@ -72,22 +78,15 @@ end
 local function isItemImportante(obj)
     if TIPOS_LIXO[obj.ClassName] then return false end
 
-    -- BLINDAGEM ANTI-INTRUSO APRIMORADA
     local localName = LocalPlayer and LocalPlayer.Name or ""
     local localUserId = LocalPlayer and tostring(LocalPlayer.UserId) or ""
     local pai = obj.Parent
-    
+
     while pai and pai ~= game do
-        -- Se a pasta é literalmente o nosso nome ou nosso ID, está seguro.
         if pai.Name == localName or pai.Name == localUserId then break end
-        
-        -- Se for a raiz de outro jogador ativo
         if pai:IsA("Player") and pai.Name ~= localName then return false end
         if Players:FindFirstChild(pai.Name) and pai.Name ~= localName then return false end
-        
-        -- NOVA REGRA: Se for um personagem (avatar) jogado no mapa que não seja o nosso
         if pai:IsA("Model") and pai:FindFirstChildOfClass("Humanoid") and pai.Name ~= localName then return false end
-        
         pai = pai.Parent
     end
 
@@ -102,7 +101,6 @@ local function isItemImportante(obj)
         if string.find(nomeLower, lixo) then return false end
     end
 
-    -- Filtros de Texto da UI
     if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("StringValue") then
         local val = ""
         pcall(function() val = string.lower(obterValorSeguro(obj)) end)
@@ -131,13 +129,34 @@ local function isItemImportante(obj)
 end
 
 -- ==========================================
--- SISTEMA DE VARREDURA HÍBRIDA
+-- BUSCA E RESOLUÇÃO DE CAMINHOS
 -- ==========================================
+local function resolverCaminho(caminhoString)
+    local partes = string.split(caminhoString, ".")
+    local atual = game
+    
+    for i, parte in ipairs(partes) do
+        if not atual then return nil end
+        
+        if atual == game then
+            local sucesso, servico = pcall(function() return game:GetService(parte) end)
+            if sucesso and servico then
+                atual = servico
+            else
+                atual = game:FindFirstChild(parte)
+            end
+        else
+            atual = atual:FindFirstChild(parte)
+        end
+    end
+    
+    return atual
+end
+
 local function iniciarVarredura()
     local dadosColetados = {}
-    local nomesVistos = {} 
+    local nomesVistos = {}
 
-    -- 1. PASSO OURO: Buscar nas pastas oficiais de status
     local PASTAS_STATUS = {"leaderstats", "Stats", "Data", "PlayerData", "leaderboard", "Currency"}
 
     for _, nomePasta in ipairs(PASTAS_STATUS) do
@@ -146,23 +165,19 @@ local function iniciarVarredura()
             for _, stat in ipairs(pasta:GetChildren()) do
                 if stat:IsA("IntValue") or stat:IsA("NumberValue") or stat:IsA("StringValue") then
                     local chaveRastreio = stat.Name
-
                     if not nomesVistos[chaveRastreio] then
                         table.insert(dadosColetados, {
-                            Nome = stat.Name,
-                            Caminho = stat:GetFullName(),
-                            Valor = tostring(stat.Value),
-                            Tipo = stat.ClassName,
+                            Nome = stat.Name, Caminho = stat:GetFullName(),
+                            Valor = tostring(stat.Value), Tipo = stat.ClassName,
                             Confiabilidade = "Alta (Status Oficial)"
                         })
-                        nomesVistos[chaveRastreio] = true 
+                        nomesVistos[chaveRastreio] = true
                     end
                 end
             end
         end
     end
 
-    -- 2. PASSO PROFUNDO: Buscar no resto do jogo usando o Filtro Supremo
     local servicos = { LocalPlayer, game:GetService("ReplicatedStorage") }
 
     for _, serv in ipairs(servicos) do
@@ -170,20 +185,15 @@ local function iniciarVarredura()
             local descendentes = serv:GetDescendants()
             for i, obj in ipairs(descendentes) do
                 if i % 500 == 0 then task.wait() end
-
                 if obj:IsA("ValueBase") or obj:IsA("TextLabel") or obj:IsA("TextButton") then
                     if isItemImportante(obj) then
                         local chaveRastreio = obj.Name
-
                         if not nomesVistos[chaveRastreio] then
                             local valorSeguro = "nil"
                             pcall(function() valorSeguro = obterValorSeguro(obj) end)
-
                             table.insert(dadosColetados, {
-                                Nome = obj.Name,
-                                Caminho = obj:GetFullName(),
-                                Valor = valorSeguro,
-                                Tipo = obj.ClassName,
+                                Nome = obj.Name, Caminho = obj:GetFullName(),
+                                Valor = valorSeguro, Tipo = obj.ClassName,
                                 Confiabilidade = "Baixa (Interface/Replicated)"
                             })
                             nomesVistos[chaveRastreio] = true
@@ -198,27 +208,86 @@ local function iniciarVarredura()
 end
 
 -- ==========================================
--- EXECUÇÃO PRINCIPAL
+-- LOOP PRINCIPAL (GERENCIADOR DE METAS)
 -- ==========================================
-if precisaAtualizar() then
-    local dados = iniciarVarredura()
+local function rodarCiclo()
+    -- 1. Nova Regra Rápida: Atualiza apenas Metas Ativas (se existirem)
+    if isfile(targetFile) then
+        local targetContent = nil
+        pcall(function() targetContent = readfile(targetFile) end)
+        
+        if targetContent then
+            local sucessoJSON, targetData = pcall(function() return HttpService:JSONDecode(targetContent) end)
+            
+            if sucessoJSON and targetData and type(targetData.paths) == "table" then
+                local dadosAlvos = {}
+                
+                for _, caminho in ipairs(targetData.paths) do
+                    local obj = resolverCaminho(caminho)
+                    if obj then
+                        local val = "0"
+                        pcall(function() val = obterValorSeguro(obj) end)
+                        
+                        table.insert(dadosAlvos, {
+                            Nome = obj.Name,
+                            Caminho = caminho,
+                            Valor = tostring(val),
+                            Tipo = obj.ClassName,
+                            Confiabilidade = "Alvo Monitorado"
+                        })
+                    end
+                end
+                
+                -- Se as metas estão ativas, salva apenas elas e pula a varredura pesada
+                if #dadosAlvos > 0 then
+                    local payload = {
+                        place_id = PlaceId,
+                        player_name = LocalPlayer and LocalPlayer.Name or "Unknown",
+                        last_scan = os.time(),
+                        items_count = #dadosAlvos,
+                        data = dadosAlvos
+                    }
+                    pcall(function() 
+                        writefile(fileName, HttpService:JSONEncode(payload)) 
+                    end)
+                end
+                
+                return -- Sai da função aqui para garantir que a varredura global NÃO rode
+            end
+        end
+    end
 
-    if #dados > 0 then
-        local payload = {
-            place_id = PlaceId,
-            player_name = LocalPlayer and LocalPlayer.Name or "Unknown",
-            last_scan = os.time(),
-            items_count = #dados,
-            data = dados
-        }
+    -- 2. Regra Antiga: Só cai aqui se NÃO houver metas ativas E se passaram 4 dias
+    if precisaAtualizar() then
+        local dados = iniciarVarredura()
 
-        local sucessoJson, corpoJson = pcall(function() return HttpService:JSONEncode(payload) end)
+        if #dados > 0 then
+            local payload = {
+                place_id = PlaceId,
+                player_name = LocalPlayer and LocalPlayer.Name or "Unknown",
+                last_scan = os.time(),
+                items_count = #dados,
+                data = dados
+            }
 
-        if sucessoJson and writefile then
-            local sucessoWrite = pcall(function() writefile(fileName, corpoJson) end)
-            if not sucessoWrite then
-                pcall(function() writefile(fallbackName, corpoJson) end)
+            local sucessoJson, corpoJson = pcall(function() return HttpService:JSONEncode(payload) end)
+
+            if sucessoJson and writefile then
+                local sucessoWrite = pcall(function() writefile(fileName, corpoJson) end)
+                if not sucessoWrite then
+                    pcall(function() writefile(fallbackName, corpoJson) end)
+                end
             end
         end
     end
 end
+
+-- ==========================================
+-- DAEMON WORKER (Atualiza a cada 60s)
+-- ==========================================
+task.spawn(function()
+    while true do
+        rodarCiclo()
+        task.wait(60) -- Intervalo de leitura
+    end
+end)
