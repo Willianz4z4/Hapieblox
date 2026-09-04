@@ -18,6 +18,47 @@ if isfolder and not isfolder(targetFolder) then
     pcall(function() makefolder(targetFolder) end)
 end
 
+-- ==========================================
+-- SISTEMA DE MÁSCARA CURINGA [LOCAL_PLAYER]
+-- ==========================================
+local function substituirTextoSeguro(str, find, replace)
+    if not find or find == "" or not str then return str end
+    local s = ""
+    local startIdx = 1
+    while true do
+        local findStart, findEnd = str:find(find, startIdx, true)
+        if not findStart then
+            s = s .. str:sub(startIdx)
+            break
+        end
+        s = s .. str:sub(startIdx, findStart - 1) .. replace
+        startIdx = findEnd + 1
+    end
+    return s
+end
+
+local function mascararCaminho(caminho)
+    local str = caminho
+    if LocalPlayer and LocalPlayer.Name and LocalPlayer.Name ~= "" then
+        str = substituirTextoSeguro(str, LocalPlayer.Name, "[LOCAL_PLAYER]")
+    end
+    if LocalPlayer and LocalPlayer.UserId then
+        str = substituirTextoSeguro(str, tostring(LocalPlayer.UserId), "[LOCAL_USER_ID]")
+    end
+    return str
+end
+
+local function desmascararCaminho(caminho)
+    local str = caminho
+    if LocalPlayer and LocalPlayer.Name then
+        str = substituirTextoSeguro(str, "[LOCAL_PLAYER]", LocalPlayer.Name)
+    end
+    if LocalPlayer and LocalPlayer.UserId then
+        str = substituirTextoSeguro(str, "[LOCAL_USER_ID]", tostring(LocalPlayer.UserId))
+    end
+    return str
+end
+
 local function precisaAtualizar()
     if not isfile or not readfile then return true end
     local conteudo = nil
@@ -134,10 +175,10 @@ end
 local function resolverCaminho(caminhoString)
     local partes = string.split(caminhoString, ".")
     local atual = game
-    
+
     for i, parte in ipairs(partes) do
         if not atual then return nil end
-        
+
         if atual == game then
             local sucesso, servico = pcall(function() return game:GetService(parte) end)
             if sucesso and servico then
@@ -149,7 +190,7 @@ local function resolverCaminho(caminhoString)
             atual = atual:FindFirstChild(parte)
         end
     end
-    
+
     return atual
 end
 
@@ -167,7 +208,7 @@ local function iniciarVarredura()
                     local chaveRastreio = stat.Name
                     if not nomesVistos[chaveRastreio] then
                         table.insert(dadosColetados, {
-                            Nome = stat.Name, Caminho = stat:GetFullName(),
+                            Nome = stat.Name, Caminho = mascararCaminho(stat:GetFullName()),
                             Valor = tostring(stat.Value), Tipo = stat.ClassName,
                             Confiabilidade = "Alta (Status Oficial)"
                         })
@@ -192,7 +233,7 @@ local function iniciarVarredura()
                             local valorSeguro = "nil"
                             pcall(function() valorSeguro = obterValorSeguro(obj) end)
                             table.insert(dadosColetados, {
-                                Nome = obj.Name, Caminho = obj:GetFullName(),
+                                Nome = obj.Name, Caminho = mascararCaminho(obj:GetFullName()),
                                 Valor = valorSeguro, Tipo = obj.ClassName,
                                 Confiabilidade = "Baixa (Interface/Replicated)"
                             })
@@ -215,29 +256,30 @@ local function rodarCiclo()
     if isfile(targetFile) then
         local targetContent = nil
         pcall(function() targetContent = readfile(targetFile) end)
-        
+
         if targetContent then
             local sucessoJSON, targetData = pcall(function() return HttpService:JSONDecode(targetContent) end)
-            
+
             if sucessoJSON and targetData and type(targetData.paths) == "table" then
                 local dadosAlvos = {}
-                
+
                 for _, caminho in ipairs(targetData.paths) do
-                    local obj = resolverCaminho(caminho)
+                    -- DESMASCARA o caminho curinga pro script achar o caminho real da conta
+                    local obj = resolverCaminho(desmascararCaminho(caminho))
                     if obj then
                         local val = "0"
                         pcall(function() val = obterValorSeguro(obj) end)
-                        
+
                         table.insert(dadosAlvos, {
                             Nome = obj.Name,
-                            Caminho = caminho,
+                            Caminho = caminho, -- Mantém o coringa ao salvar
                             Valor = tostring(val),
                             Tipo = obj.ClassName,
                             Confiabilidade = "Alvo Monitorado"
                         })
                     end
                 end
-                
+
                 -- Se as metas estão ativas, salva apenas elas e pula a varredura pesada
                 if #dadosAlvos > 0 then
                     local payload = {
@@ -247,11 +289,11 @@ local function rodarCiclo()
                         items_count = #dadosAlvos,
                         data = dadosAlvos
                     }
-                    pcall(function() 
-                        writefile(fileName, HttpService:JSONEncode(payload)) 
+                    pcall(function()
+                        writefile(fileName, HttpService:JSONEncode(payload))
                     end)
                 end
-                
+
                 return -- Sai da função aqui para garantir que a varredura global NÃO rode
             end
         end
