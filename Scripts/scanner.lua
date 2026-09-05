@@ -6,21 +6,23 @@ local MeuNick = LocalPlayer and LocalPlayer.Name or "Unknown"
 
 local folderName = "Hapieblox_Farm"
 
-local fileName = folderName .. "/game_" .. PlaceId .. "_" .. MeuNick .. "_farm.json"
-local fallbackName = "fallback_" .. PlaceId .. "_" .. MeuNick .. "_farm.json"
-local statusName = folderName .. "/status_" .. PlaceId .. "_" .. MeuNick .. ".json"
+-- 1 ARQUIVO DE MAPEAMENTO ÚNICO POR JOGO (Para a IA)
+local fileName = folderName .. "/game_" .. PlaceId .. "_farm.json"
+local fallbackName = "fallback_" .. PlaceId .. "_farm.json"
 
+-- PASTAS ORGANIZADAS
 local targetFolder = folderName .. "/targets_active"
 local targetFile = targetFolder .. "/" .. PlaceId .. ".json"
+local playersFolder = targetFolder .. "/target_players"
+
+-- STATUS SALVOS DENTRO DA SUB-PASTA DOS JOGADORES
+local statusName = playersFolder .. "/status_" .. PlaceId .. "_" .. MeuNick .. ".json"
 
 local QUATRO_DIAS_EM_SEGUNDOS = 4 * 24 * 60 * 60
 
-if isfolder and not isfolder(folderName) then
-    pcall(function() makefolder(folderName) end)
-end
-if isfolder and not isfolder(targetFolder) then
-    pcall(function() makefolder(targetFolder) end)
-end
+if isfolder and not isfolder(folderName) then pcall(function() makefolder(folderName) end) end
+if isfolder and not isfolder(targetFolder) then pcall(function() makefolder(targetFolder) end) end
+if isfolder and not isfolder(playersFolder) then pcall(function() makefolder(playersFolder) end) end
 
 local function precisaAtualizar()
     if not isfile or not readfile then return true end
@@ -70,9 +72,7 @@ local LIXO_NOME = {
 }
 
 local function obterValorSeguro(obj)
-    if obj:IsA("TextLabel") or obj:IsA("TextButton") then
-        return obj.Text
-    end
+    if obj:IsA("TextLabel") or obj:IsA("TextButton") then return obj.Text end
     return tostring(obj.Value)
 end
 
@@ -94,13 +94,8 @@ local function isItemImportante(obj)
     local caminhoLower = obj:GetFullName():lower()
     local nomeLower = obj.Name:lower()
 
-    for _, lixo in ipairs(LIXO_CAMINHO) do
-        if string.find(caminhoLower, lixo) then return false end
-    end
-
-    for _, lixo in ipairs(LIXO_NOME) do
-        if string.find(nomeLower, lixo) then return false end
-    end
+    for _, lixo in ipairs(LIXO_CAMINHO) do if string.find(caminhoLower, lixo) then return false end end
+    for _, lixo in ipairs(LIXO_NOME) do if string.find(nomeLower, lixo) then return false end end
 
     if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("StringValue") then
         local val = ""
@@ -113,19 +108,12 @@ local function isItemImportante(obj)
         if string.match(val, "^x%d+") then return false end
 
         local badWords = {"buy", "purchase", "off", "fps", "reward", "page", "hang tight", "last seen", "month", "days"}
-        for _, word in ipairs(badWords) do
-            if string.find(val, word) then return false end
-        end
+        for _, word in ipairs(badWords) do if string.find(val, word) then return false end end
 
-        if (obj:IsA("TextLabel") or obj:IsA("TextButton")) and not string.match(val, "%d") then
-            return false
-        end
+        if (obj:IsA("TextLabel") or obj:IsA("TextButton")) and not string.match(val, "%d") then return false end
     end
 
-    if obj:IsA("IntValue") or obj:IsA("NumberValue") or obj:IsA("StringValue") or obj:IsA("TextLabel") or obj:IsA("TextButton") then
-        return true
-    end
-
+    if obj:IsA("IntValue") or obj:IsA("NumberValue") or obj:IsA("StringValue") or obj:IsA("TextLabel") or obj:IsA("TextButton") then return true end
     return false
 end
 
@@ -135,26 +123,19 @@ local function resolverCaminho(caminhoString)
 
     for i, parte in ipairs(partes) do
         if not atual then return nil end
-
         if atual == game then
             local sucesso, servico = pcall(function() return game:GetService(parte) end)
-            if sucesso and servico then
-                atual = servico
-            else
-                atual = game:FindFirstChild(parte)
-            end
+            if sucesso and servico then atual = servico else atual = game:FindFirstChild(parte) end
         else
             atual = atual:FindFirstChild(parte)
         end
     end
-
     return atual
 end
 
 local function iniciarVarredura()
     local dadosColetados = {}
     local nomesVistos = {}
-
     local PASTAS_STATUS = {"leaderstats", "Stats", "Data", "PlayerData", "leaderboard", "Currency"}
 
     for _, nomePasta in ipairs(PASTAS_STATUS) do
@@ -164,11 +145,7 @@ local function iniciarVarredura()
                 if stat:IsA("IntValue") or stat:IsA("NumberValue") or stat:IsA("StringValue") then
                     local chaveRastreio = stat.Name
                     if not nomesVistos[chaveRastreio] then
-                        table.insert(dadosColetados, {
-                            Nome = stat.Name, Caminho = stat:GetFullName(),
-                            Valor = tostring(stat.Value), Tipo = stat.ClassName,
-                            Confiabilidade = "Alta (Status Oficial)"
-                        })
+                        table.insert(dadosColetados, { Nome = stat.Name, Caminho = stat:GetFullName(), Valor = tostring(stat.Value), Tipo = stat.ClassName, Confiabilidade = "Alta (Status Oficial)" })
                         nomesVistos[chaveRastreio] = true
                     end
                 end
@@ -177,7 +154,6 @@ local function iniciarVarredura()
     end
 
     local servicos = { LocalPlayer, game:GetService("ReplicatedStorage") }
-
     for _, serv in ipairs(servicos) do
         pcall(function()
             local descendentes = serv:GetDescendants()
@@ -189,11 +165,7 @@ local function iniciarVarredura()
                         if not nomesVistos[chaveRastreio] then
                             local valorSeguro = "nil"
                             pcall(function() valorSeguro = obterValorSeguro(obj) end)
-                            table.insert(dadosColetados, {
-                                Nome = obj.Name, Caminho = obj:GetFullName(),
-                                Valor = valorSeguro, Tipo = obj.ClassName,
-                                Confiabilidade = "Baixa (Interface/Replicated)"
-                            })
+                            table.insert(dadosColetados, { Nome = obj.Name, Caminho = obj:GetFullName(), Valor = valorSeguro, Tipo = obj.ClassName, Confiabilidade = "Baixa (Interface/Replicated)" })
                             nomesVistos[chaveRastreio] = true
                         end
                     end
@@ -201,12 +173,11 @@ local function iniciarVarredura()
             end
         end)
     end
-
     return dadosColetados
 end
 
 local function rodarCiclo()
-    -- 1. Regra Rápida: Atualiza o Status (Metas Ativas)
+    -- 1. Regra Rápida (Status Atualizado) -> Salva em target_players
     if isfile(targetFile) then
         local targetContent = nil
         pcall(function() targetContent = readfile(targetFile) end)
@@ -216,63 +187,33 @@ local function rodarCiclo()
 
             if sucessoJSON and targetData and type(targetData.paths) == "table" then
                 local dadosAlvos = {}
-
                 for _, caminhoCuringa in ipairs(targetData.paths) do
                     local caminhoReal = string.gsub(caminhoCuringa, "%[LOCAL_PLAYER%]", MeuNick)
-                    
                     local obj = resolverCaminho(caminhoReal)
                     if obj then
                         local val = "0"
                         pcall(function() val = obterValorSeguro(obj) end)
-
-                        table.insert(dadosAlvos, {
-                            Nome = obj.Name,
-                            Caminho = caminhoReal,
-                            Valor = tostring(val),
-                            Tipo = obj.ClassName,
-                            Confiabilidade = "Alvo Monitorado"
-                        })
+                        table.insert(dadosAlvos, { Nome = obj.Name, Caminho = caminhoReal, Caminho_Base = caminhoCuringa, Valor = tostring(val), Tipo = obj.ClassName, Confiabilidade = "Alvo Monitorado" })
                     end
                 end
 
                 if #dadosAlvos > 0 then
-                    local payload = {
-                        place_id = PlaceId,
-                        player_name = MeuNick,
-                        last_scan = os.time(),
-                        items_count = #dadosAlvos,
-                        data = dadosAlvos
-                    }
-                    pcall(function()
-                        writefile(statusName, HttpService:JSONEncode(payload))
-                    end)
+                    local payload = { place_id = PlaceId, player_name = MeuNick, last_scan = os.time(), items_count = #dadosAlvos, data = dadosAlvos }
+                    pcall(function() writefile(statusName, HttpService:JSONEncode(payload)) end)
                 end
-                
-                -- O "return" foi removido daqui! Agora ele segue para checar a varredura dos 4 dias.
             end
         end
     end
 
-    -- 2. Regra Antiga (Varredura de 4 dias):
+    -- 2. Regra Antiga (Dump Base Único) -> Salva na raiz 1 vez por jogo
     if precisaAtualizar() then
         local dados = iniciarVarredura()
-
         if #dados > 0 then
-            local payload = {
-                place_id = PlaceId,
-                player_name = MeuNick,
-                last_scan = os.time(),
-                items_count = #dados,
-                data = dados
-            }
-
+            local payload = { place_id = PlaceId, player_name = MeuNick, last_scan = os.time(), items_count = #dados, data = dados }
             local sucessoJson, corpoJson = pcall(function() return HttpService:JSONEncode(payload) end)
-
             if sucessoJson and writefile then
                 local sucessoWrite = pcall(function() writefile(fileName, corpoJson) end)
-                if not sucessoWrite then
-                    pcall(function() writefile(fallbackName, corpoJson) end)
-                end
+                if not sucessoWrite then pcall(function() writefile(fallbackName, corpoJson) end) end
             end
         end
     end
