@@ -177,8 +177,15 @@ local function iniciarVarredura()
 end
 
 local function rodarCiclo()
+    -- 0. Trava de Segurança do Executor
+    if not isfile or not readfile or not writefile then return end
+
+    local possuiAlvo = false
+    
     -- 1. Regra Rápida (Status Atualizado) -> Salva em target_players
-    if isfile(targetFile) then
+    local sucessoIsfile, targetExiste = pcall(function() return isfile(targetFile) end)
+    
+    if sucessoIsfile and targetExiste then
         local targetContent = nil
         pcall(function() targetContent = readfile(targetFile) end)
 
@@ -186,22 +193,46 @@ local function rodarCiclo()
             local sucessoJSON, targetData = pcall(function() return HttpService:JSONDecode(targetContent) end)
 
             if sucessoJSON and targetData and type(targetData.paths) == "table" then
+                possuiAlvo = true
                 local dadosAlvos = {}
+                
                 for _, caminhoCuringa in ipairs(targetData.paths) do
-                    local caminhoReal = string.gsub(caminhoCuringa, "%[LOCAL_PLAYER%]", MeuNick)
-                    local obj = resolverCaminho(caminhoReal)
-                    if obj then
-                        local val = "0"
-                        pcall(function() val = obterValorSeguro(obj) end)
-                        table.insert(dadosAlvos, { Nome = obj.Name, Caminho = caminhoReal, Caminho_Base = caminhoCuringa, Valor = tostring(val), Tipo = obj.ClassName, Confiabilidade = "Alvo Monitorado" })
+                    if type(caminhoCuringa) == "string" then
+                        local caminhoReal = string.gsub(caminhoCuringa, "%[LOCAL_PLAYER%]", MeuNick)
+                        local obj = resolverCaminho(caminhoReal)
+                        if obj then
+                            local val = "0"
+                            pcall(function() val = obterValorSeguro(obj) end)
+                            table.insert(dadosAlvos, { 
+                                Nome = obj.Name, 
+                                Caminho = caminhoReal, 
+                                Caminho_Base = caminhoCuringa, 
+                                Valor = tostring(val), 
+                                Tipo = obj.ClassName, 
+                                Confiabilidade = "Alvo Monitorado" 
+                            })
+                        end
                     end
                 end
 
-                if #dadosAlvos > 0 then
-                    local payload = { place_id = PlaceId, player_name = MeuNick, last_scan = os.time(), items_count = #dadosAlvos, data = dadosAlvos }
-                    pcall(function() writefile(statusName, HttpService:JSONEncode(payload)) end)
-                end
+                -- Atualiza o last_scan garantido e sobrepõe o arquivo sem falhas
+                local payload = { 
+                    place_id = PlaceId, 
+                    player_name = MeuNick, 
+                    last_scan = os.time(), 
+                    items_count = #dadosAlvos, 
+                    data = dadosAlvos 
+                }
+                pcall(function() writefile(statusName, HttpService:JSONEncode(payload)) end)
             end
+        end
+    end
+
+    -- Se não há mais alvo ativo para o jogo, limpa o arquivo zumbi do usuário
+    if not possuiAlvo then
+        local sucessoStatus, statusExiste = pcall(function() return isfile(statusName) end)
+        if sucessoStatus and statusExiste and delfile then
+            pcall(function() delfile(statusName) end)
         end
     end
 
@@ -211,7 +242,7 @@ local function rodarCiclo()
         if #dados > 0 then
             local payload = { place_id = PlaceId, player_name = MeuNick, last_scan = os.time(), items_count = #dados, data = dados }
             local sucessoJson, corpoJson = pcall(function() return HttpService:JSONEncode(payload) end)
-            if sucessoJson and writefile then
+            if sucessoJson then
                 local sucessoWrite = pcall(function() writefile(fileName, corpoJson) end)
                 if not sucessoWrite then pcall(function() writefile(fallbackName, corpoJson) end) end
             end
