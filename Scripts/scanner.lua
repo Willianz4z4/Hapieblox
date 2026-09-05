@@ -2,10 +2,16 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlaceId = tostring(game.PlaceId)
+local MeuNick = LocalPlayer and LocalPlayer.Name or "Unknown"
 
 local folderName = "Hapieblox_Farm"
-local fileName = folderName .. "/game_" .. PlaceId .. "_farm.json"
-local fallbackName = "game_" .. PlaceId .. "_farm.json"
+
+-- ARQUIVOS ÚNICOS POR CONTA (Evita bug de 20 instâncias salvando ao mesmo tempo)
+local fileName = folderName .. "/game_" .. PlaceId .. "_" .. MeuNick .. "_farm.json"
+local fallbackName = "fallback_" .. PlaceId .. "_" .. MeuNick .. "_farm.json"
+local statusName = folderName .. "/status_" .. PlaceId .. "_" .. MeuNick .. ".json"
+
+-- ARQUIVO COMPARTILHADO DA IA (Somente Leitura)
 local targetFolder = folderName .. "/targets_active"
 local targetFile = targetFolder .. "/" .. PlaceId .. ".json"
 
@@ -16,6 +22,47 @@ if isfolder and not isfolder(folderName) then
 end
 if isfolder and not isfolder(targetFolder) then
     pcall(function() makefolder(targetFolder) end)
+end
+
+-- ==========================================
+-- SISTEMA DE MÁSCARA CURINGA [LOCAL_PLAYER]
+-- ==========================================
+local function substituirTextoSeguro(str, find, replace)
+    if not find or find == "" or not str then return str end
+    local s = ""
+    local startIdx = 1
+    while true do
+        local findStart, findEnd = str:find(find, startIdx, true)
+        if not findStart then
+            s = s .. str:sub(startIdx)
+            break
+        end
+        s = s .. str:sub(startIdx, findStart - 1) .. replace
+        startIdx = findEnd + 1
+    end
+    return s
+end
+
+local function mascararCaminho(caminho)
+    local str = caminho
+    if LocalPlayer and LocalPlayer.Name and LocalPlayer.Name ~= "" then
+        str = substituirTextoSeguro(str, LocalPlayer.Name, "[LOCAL_PLAYER]")
+    end
+    if LocalPlayer and LocalPlayer.UserId then
+        str = substituirTextoSeguro(str, tostring(LocalPlayer.UserId), "[LOCAL_USER_ID]")
+    end
+    return str
+end
+
+local function desmascararCaminho(caminho)
+    local str = caminho
+    if LocalPlayer and LocalPlayer.Name then
+        str = substituirTextoSeguro(str, "[LOCAL_PLAYER]", LocalPlayer.Name)
+    end
+    if LocalPlayer and LocalPlayer.UserId then
+        str = substituirTextoSeguro(str, "[LOCAL_USER_ID]", tostring(LocalPlayer.UserId))
+    end
+    return str
 end
 
 local function precisaAtualizar()
@@ -167,7 +214,7 @@ local function iniciarVarredura()
                     local chaveRastreio = stat.Name
                     if not nomesVistos[chaveRastreio] then
                         table.insert(dadosColetados, {
-                            Nome = stat.Name, Caminho = stat:GetFullName(), -- AQUI: Caminho Bruto
+                            Nome = stat.Name, Caminho = mascararCaminho(stat:GetFullName()),
                             Valor = tostring(stat.Value), Tipo = stat.ClassName,
                             Confiabilidade = "Alta (Status Oficial)"
                         })
@@ -192,7 +239,7 @@ local function iniciarVarredura()
                             local valorSeguro = "nil"
                             pcall(function() valorSeguro = obterValorSeguro(obj) end)
                             table.insert(dadosColetados, {
-                                Nome = obj.Name, Caminho = obj:GetFullName(), -- AQUI: Caminho Bruto
+                                Nome = obj.Name, Caminho = mascararCaminho(obj:GetFullName()),
                                 Valor = valorSeguro, Tipo = obj.ClassName,
                                 Confiabilidade = "Baixa (Interface/Replicated)"
                             })
@@ -222,16 +269,19 @@ local function rodarCiclo()
             if sucessoJSON and targetData and type(targetData.paths) == "table" then
                 local dadosAlvos = {}
 
-                for _, caminho in ipairs(targetData.paths) do
-                    -- Resolve direto o caminho (agora é bruto)
-                    local obj = resolverCaminho(caminho)
+                for _, caminhoCuringa in ipairs(targetData.paths) do
+                    -- DESMASCARA o caminho curinga pro script achar o caminho real exclusivo desta conta!
+                    local caminhoReal = string.gsub(caminhoCuringa, "%[LOCAL_PLAYER%]", MeuNick)
+                    
+                    local obj = resolverCaminho(caminhoReal)
                     if obj then
                         local val = "0"
                         pcall(function() val = obterValorSeguro(obj) end)
 
                         table.insert(dadosAlvos, {
                             Nome = obj.Name,
-                            Caminho = caminho, 
+                            Caminho_Base = caminhoCuringa, -- O caminho genérico
+                            Caminho_Real = caminhoReal,    -- O caminho bruto com o Nick
                             Valor = tostring(val),
                             Tipo = obj.ClassName,
                             Confiabilidade = "Alvo Monitorado"
@@ -239,17 +289,18 @@ local function rodarCiclo()
                     end
                 end
 
-                -- Se as metas estão ativas, salva apenas elas e pula a varredura pesada
+                -- Se as metas estão ativas, salva apenas elas de forma ISOLADA e pula a varredura pesada
                 if #dadosAlvos > 0 then
                     local payload = {
                         place_id = PlaceId,
-                        player_name = LocalPlayer and LocalPlayer.Name or "Unknown",
+                        player_name = MeuNick,
                         last_scan = os.time(),
                         items_count = #dadosAlvos,
                         data = dadosAlvos
                     }
                     pcall(function()
-                        writefile(fileName, HttpService:JSONEncode(payload))
+                        -- Salva no arquivo ÚNICO da conta (status_1234_NomeDaConta.json)
+                        writefile(statusName, HttpService:JSONEncode(payload))
                     end)
                 end
 
@@ -258,14 +309,14 @@ local function rodarCiclo()
         end
     end
 
-    -- 2. Regra Antiga: Só cai aqui se NÃO houver metas ativas E se passaram 4 dias
+    -- 2. Regra Antiga (Varredura Completa): Só cai aqui se NÃO houver metas ativas E se passaram 4 dias
     if precisaAtualizar() then
         local dados = iniciarVarredura()
 
         if #dados > 0 then
             local payload = {
                 place_id = PlaceId,
-                player_name = LocalPlayer and LocalPlayer.Name or "Unknown",
+                player_name = MeuNick,
                 last_scan = os.time(),
                 items_count = #dados,
                 data = dados
@@ -274,6 +325,7 @@ local function rodarCiclo()
             local sucessoJson, corpoJson = pcall(function() return HttpService:JSONEncode(payload) end)
 
             if sucessoJson and writefile then
+                -- Salva no arquivo ÚNICO da conta (game_1234_NomeDaConta_farm.json)
                 local sucessoWrite = pcall(function() writefile(fileName, corpoJson) end)
                 if not sucessoWrite then
                     pcall(function() writefile(fallbackName, corpoJson) end)
