@@ -18,47 +18,6 @@ if isfolder and not isfolder(targetFolder) then
     pcall(function() makefolder(targetFolder) end)
 end
 
--- ==========================================
--- SISTEMA DE MÁSCARA CURINGA [LOCAL_PLAYER]
--- ==========================================
-local function substituirTextoSeguro(str, find, replace)
-    if not find or find == "" or not str then return str end
-    local s = ""
-    local startIdx = 1
-    while true do
-        local findStart, findEnd = str:find(find, startIdx, true)
-        if not findStart then
-            s = s .. str:sub(startIdx)
-            break
-        end
-        s = s .. str:sub(startIdx, findStart - 1) .. replace
-        startIdx = findEnd + 1
-    end
-    return s
-end
-
-local function mascararCaminho(caminho)
-    local str = caminho
-    if LocalPlayer and LocalPlayer.Name and LocalPlayer.Name ~= "" then
-        str = substituirTextoSeguro(str, LocalPlayer.Name, "[LOCAL_PLAYER]")
-    end
-    if LocalPlayer and LocalPlayer.UserId then
-        str = substituirTextoSeguro(str, tostring(LocalPlayer.UserId), "[LOCAL_USER_ID]")
-    end
-    return str
-end
-
-local function desmascararCaminho(caminho)
-    local str = caminho
-    if LocalPlayer and LocalPlayer.Name then
-        str = substituirTextoSeguro(str, "[LOCAL_PLAYER]", LocalPlayer.Name)
-    end
-    if LocalPlayer and LocalPlayer.UserId then
-        str = substituirTextoSeguro(str, "[LOCAL_USER_ID]", tostring(LocalPlayer.UserId))
-    end
-    return str
-end
-
 local function precisaAtualizar()
     if not isfile or not readfile then return true end
     local conteudo = nil
@@ -208,7 +167,7 @@ local function iniciarVarredura()
                     local chaveRastreio = stat.Name
                     if not nomesVistos[chaveRastreio] then
                         table.insert(dadosColetados, {
-                            Nome = stat.Name, Caminho = mascararCaminho(stat:GetFullName()),
+                            Nome = stat.Name, Caminho = stat:GetFullName(), -- AQUI: Caminho Bruto
                             Valor = tostring(stat.Value), Tipo = stat.ClassName,
                             Confiabilidade = "Alta (Status Oficial)"
                         })
@@ -233,7 +192,7 @@ local function iniciarVarredura()
                             local valorSeguro = "nil"
                             pcall(function() valorSeguro = obterValorSeguro(obj) end)
                             table.insert(dadosColetados, {
-                                Nome = obj.Name, Caminho = mascararCaminho(obj:GetFullName()),
+                                Nome = obj.Name, Caminho = obj:GetFullName(), -- AQUI: Caminho Bruto
                                 Valor = valorSeguro, Tipo = obj.ClassName,
                                 Confiabilidade = "Baixa (Interface/Replicated)"
                             })
@@ -264,15 +223,15 @@ local function rodarCiclo()
                 local dadosAlvos = {}
 
                 for _, caminho in ipairs(targetData.paths) do
-                    -- DESMASCARA o caminho curinga pro script achar o caminho real da conta
-                    local obj = resolverCaminho(desmascararCaminho(caminho))
+                    -- Resolve direto o caminho (agora é bruto)
+                    local obj = resolverCaminho(caminho)
                     if obj then
                         local val = "0"
                         pcall(function() val = obterValorSeguro(obj) end)
 
                         table.insert(dadosAlvos, {
                             Nome = obj.Name,
-                            Caminho = caminho, -- Mantém o coringa ao salvar
+                            Caminho = caminho, 
                             Valor = tostring(val),
                             Tipo = obj.ClassName,
                             Confiabilidade = "Alvo Monitorado"
