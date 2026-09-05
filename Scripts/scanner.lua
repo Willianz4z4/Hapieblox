@@ -6,16 +6,14 @@ local MeuNick = LocalPlayer and LocalPlayer.Name or "Unknown"
 
 local folderName = "Hapieblox_Farm"
 
--- ARQUIVOS ÚNICOS POR CONTA (Evita bug de 20 instâncias salvando ao mesmo tempo)
 local fileName = folderName .. "/game_" .. PlaceId .. "_" .. MeuNick .. "_farm.json"
 local fallbackName = "fallback_" .. PlaceId .. "_" .. MeuNick .. "_farm.json"
 local statusName = folderName .. "/status_" .. PlaceId .. "_" .. MeuNick .. ".json"
 
--- ARQUIVO COMPARTILHADO DA IA (Somente Leitura)
 local targetFolder = folderName .. "/targets_active"
 local targetFile = targetFolder .. "/" .. PlaceId .. ".json"
 
-local QUATRO_DIAS_EM_SEGUNDOS = 4 * 24 * 60 * 60 -- 345.600 segundos
+local QUATRO_DIAS_EM_SEGUNDOS = 4 * 24 * 60 * 60
 
 if isfolder and not isfolder(folderName) then
     pcall(function() makefolder(folderName) end)
@@ -44,9 +42,6 @@ local function precisaAtualizar()
     return true
 end
 
--- ==========================================
--- FILTRO SUPREMO PARA A INTERFACE
--- ==========================================
 local TIPOS_LIXO = {
     Color3Value = true, BrickColorValue = true, Vector3Value = true,
     CFrameValue = true, BoolValue = true, ObjectValue = true, RayValue = true
@@ -134,9 +129,6 @@ local function isItemImportante(obj)
     return false
 end
 
--- ==========================================
--- BUSCA E RESOLUÇÃO DE CAMINHOS
--- ==========================================
 local function resolverCaminho(caminhoString)
     local partes = string.split(caminhoString, ".")
     local atual = game
@@ -213,11 +205,8 @@ local function iniciarVarredura()
     return dadosColetados
 end
 
--- ==========================================
--- LOOP PRINCIPAL (GERENCIADOR DE METAS)
--- ==========================================
 local function rodarCiclo()
-    -- 1. Nova Regra Rápida: Atualiza apenas Metas Ativas (se existirem)
+    -- 1. Regra Rápida: Atualiza o Status (Metas Ativas)
     if isfile(targetFile) then
         local targetContent = nil
         pcall(function() targetContent = readfile(targetFile) end)
@@ -229,7 +218,6 @@ local function rodarCiclo()
                 local dadosAlvos = {}
 
                 for _, caminhoCuringa in ipairs(targetData.paths) do
-                    -- Substitui [LOCAL_PLAYER] pro nick da conta (O Python manda o curinga)
                     local caminhoReal = string.gsub(caminhoCuringa, "%[LOCAL_PLAYER%]", MeuNick)
                     
                     local obj = resolverCaminho(caminhoReal)
@@ -239,7 +227,7 @@ local function rodarCiclo()
 
                         table.insert(dadosAlvos, {
                             Nome = obj.Name,
-                            Caminho = caminhoReal, -- Salva super limpo só com o caminho real!
+                            Caminho = caminhoReal,
                             Valor = tostring(val),
                             Tipo = obj.ClassName,
                             Confiabilidade = "Alvo Monitorado"
@@ -247,7 +235,6 @@ local function rodarCiclo()
                     end
                 end
 
-                -- Se as metas estão ativas, salva apenas elas de forma ISOLADA
                 if #dadosAlvos > 0 then
                     local payload = {
                         place_id = PlaceId,
@@ -257,17 +244,16 @@ local function rodarCiclo()
                         data = dadosAlvos
                     }
                     pcall(function()
-                        -- Salva no arquivo ÚNICO da conta (ex: status_1234_João.json)
                         writefile(statusName, HttpService:JSONEncode(payload))
                     end)
                 end
-
-                return -- Terminou o farm focado, sai aqui para não varrer tudo
+                
+                -- O "return" foi removido daqui! Agora ele segue para checar a varredura dos 4 dias.
             end
         end
     end
 
-    -- 2. Regra Antiga (Mapeamento Total):
+    -- 2. Regra Antiga (Varredura de 4 dias):
     if precisaAtualizar() then
         local dados = iniciarVarredura()
 
@@ -292,12 +278,9 @@ local function rodarCiclo()
     end
 end
 
--- ==========================================
--- DAEMON WORKER (Atualiza a cada 60s)
--- ==========================================
 task.spawn(function()
     while true do
         rodarCiclo()
-        task.wait(60) -- Intervalo de leitura
+        task.wait(60)
     end
 end)
