@@ -24,47 +24,6 @@ if isfolder and not isfolder(targetFolder) then
     pcall(function() makefolder(targetFolder) end)
 end
 
--- ==========================================
--- SISTEMA DE MÁSCARA CURINGA [LOCAL_PLAYER]
--- ==========================================
-local function substituirTextoSeguro(str, find, replace)
-    if not find or find == "" or not str then return str end
-    local s = ""
-    local startIdx = 1
-    while true do
-        local findStart, findEnd = str:find(find, startIdx, true)
-        if not findStart then
-            s = s .. str:sub(startIdx)
-            break
-        end
-        s = s .. str:sub(startIdx, findStart - 1) .. replace
-        startIdx = findEnd + 1
-    end
-    return s
-end
-
-local function mascararCaminho(caminho)
-    local str = caminho
-    if LocalPlayer and LocalPlayer.Name and LocalPlayer.Name ~= "" then
-        str = substituirTextoSeguro(str, LocalPlayer.Name, "[LOCAL_PLAYER]")
-    end
-    if LocalPlayer and LocalPlayer.UserId then
-        str = substituirTextoSeguro(str, tostring(LocalPlayer.UserId), "[LOCAL_USER_ID]")
-    end
-    return str
-end
-
-local function desmascararCaminho(caminho)
-    local str = caminho
-    if LocalPlayer and LocalPlayer.Name then
-        str = substituirTextoSeguro(str, "[LOCAL_PLAYER]", LocalPlayer.Name)
-    end
-    if LocalPlayer and LocalPlayer.UserId then
-        str = substituirTextoSeguro(str, "[LOCAL_USER_ID]", tostring(LocalPlayer.UserId))
-    end
-    return str
-end
-
 local function precisaAtualizar()
     if not isfile or not readfile then return true end
     local conteudo = nil
@@ -214,7 +173,7 @@ local function iniciarVarredura()
                     local chaveRastreio = stat.Name
                     if not nomesVistos[chaveRastreio] then
                         table.insert(dadosColetados, {
-                            Nome = stat.Name, Caminho = mascararCaminho(stat:GetFullName()),
+                            Nome = stat.Name, Caminho = stat:GetFullName(),
                             Valor = tostring(stat.Value), Tipo = stat.ClassName,
                             Confiabilidade = "Alta (Status Oficial)"
                         })
@@ -239,7 +198,7 @@ local function iniciarVarredura()
                             local valorSeguro = "nil"
                             pcall(function() valorSeguro = obterValorSeguro(obj) end)
                             table.insert(dadosColetados, {
-                                Nome = obj.Name, Caminho = mascararCaminho(obj:GetFullName()),
+                                Nome = obj.Name, Caminho = obj:GetFullName(),
                                 Valor = valorSeguro, Tipo = obj.ClassName,
                                 Confiabilidade = "Baixa (Interface/Replicated)"
                             })
@@ -270,7 +229,7 @@ local function rodarCiclo()
                 local dadosAlvos = {}
 
                 for _, caminhoCuringa in ipairs(targetData.paths) do
-                    -- DESMASCARA o caminho curinga pro script achar o caminho real exclusivo desta conta!
+                    -- Substitui [LOCAL_PLAYER] pro nick da conta (O Python manda o curinga)
                     local caminhoReal = string.gsub(caminhoCuringa, "%[LOCAL_PLAYER%]", MeuNick)
                     
                     local obj = resolverCaminho(caminhoReal)
@@ -280,8 +239,7 @@ local function rodarCiclo()
 
                         table.insert(dadosAlvos, {
                             Nome = obj.Name,
-                            Caminho_Base = caminhoCuringa, -- O caminho genérico
-                            Caminho_Real = caminhoReal,    -- O caminho bruto com o Nick
+                            Caminho = caminhoReal, -- Salva super limpo só com o caminho real!
                             Valor = tostring(val),
                             Tipo = obj.ClassName,
                             Confiabilidade = "Alvo Monitorado"
@@ -289,7 +247,7 @@ local function rodarCiclo()
                     end
                 end
 
-                -- Se as metas estão ativas, salva apenas elas de forma ISOLADA e pula a varredura pesada
+                -- Se as metas estão ativas, salva apenas elas de forma ISOLADA
                 if #dadosAlvos > 0 then
                     local payload = {
                         place_id = PlaceId,
@@ -299,17 +257,17 @@ local function rodarCiclo()
                         data = dadosAlvos
                     }
                     pcall(function()
-                        -- Salva no arquivo ÚNICO da conta (status_1234_NomeDaConta.json)
+                        -- Salva no arquivo ÚNICO da conta (ex: status_1234_João.json)
                         writefile(statusName, HttpService:JSONEncode(payload))
                     end)
                 end
 
-                return -- Sai da função aqui para garantir que a varredura global NÃO rode
+                return -- Terminou o farm focado, sai aqui para não varrer tudo
             end
         end
     end
 
-    -- 2. Regra Antiga (Varredura Completa): Só cai aqui se NÃO houver metas ativas E se passaram 4 dias
+    -- 2. Regra Antiga (Mapeamento Total):
     if precisaAtualizar() then
         local dados = iniciarVarredura()
 
@@ -325,7 +283,6 @@ local function rodarCiclo()
             local sucessoJson, corpoJson = pcall(function() return HttpService:JSONEncode(payload) end)
 
             if sucessoJson and writefile then
-                -- Salva no arquivo ÚNICO da conta (game_1234_NomeDaConta_farm.json)
                 local sucessoWrite = pcall(function() writefile(fileName, corpoJson) end)
                 if not sucessoWrite then
                     pcall(function() writefile(fallbackName, corpoJson) end)
