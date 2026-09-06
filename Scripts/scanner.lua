@@ -20,6 +20,12 @@ local statusName = playersFolder .. "/status_" .. PlaceId .. "_" .. MeuNick .. "
 
 local QUATRO_DIAS_EM_SEGUNDOS = 4 * 24 * 60 * 60
 
+-- ==============================================================
+-- SISTEMA DE HISTÓRICO PARA ACHAR O CAMINHO QUE ESTÁ "VIVO"
+-- ==============================================================
+local HistoricoValores = {} 
+local CaminhoFavorito = {} -- Guarda qual caminho da lista está atualizando mais rápido
+
 if isfolder and not isfolder(folderName) then pcall(function() makefolder(folderName) end) end
 if isfolder and not isfolder(targetFolder) then pcall(function() makefolder(targetFolder) end) end
 if isfolder and not isfolder(playersFolder) then pcall(function() makefolder(playersFolder) end) end
@@ -74,6 +80,11 @@ local LIXO_NOME = {
 local function obterValorSeguro(obj)
     if obj:IsA("TextLabel") or obj:IsA("TextButton") then return obj.Text end
     return tostring(obj.Value)
+end
+
+local function extrairNumero(str)
+    local num = string.match(tostring(str), "%d+")
+    return num and tonumber(num) or 0
 end
 
 local function isItemImportante(obj)
@@ -181,10 +192,10 @@ local function rodarCiclo()
     if not isfile or not readfile or not writefile then return end
 
     local possuiAlvo = false
-    
+
     -- 1. Regra Rápida (Status Atualizado) -> Salva em target_players
     local sucessoIsfile, targetExiste = pcall(function() return isfile(targetFile) end)
-    
+
     if sucessoIsfile and targetExiste then
         local targetContent = nil
         pcall(function() targetContent = readfile(targetFile) end)
@@ -192,36 +203,72 @@ local function rodarCiclo()
         if targetContent then
             local sucessoJSON, targetData = pcall(function() return HttpService:JSONDecode(targetContent) end)
 
+            -- Agora o "paths" no arquivo target pode conter vários caminhos para a mesma moeda
             if sucessoJSON and targetData and type(targetData.paths) == "table" then
                 possuiAlvo = true
-                local dadosAlvos = {}
-                
+                local dadosAlvosParaEnviar = {}
+
                 for _, caminhoCuringa in ipairs(targetData.paths) do
                     if type(caminhoCuringa) == "string" then
+                        local caminhoReal = string.gsub(caminhoCuringa, "%[LOCAL_PLAYER%]", MeuNick)
+                        local obj = resolverCaminho(caminhoReal)
+                        
+                        if obj then
+                            local val = "0"
+                            pcall(function() val = obterValorSeguro(obj) end)
+                            local valInt = extrairNumero(val)
+                            
+                            -- Sistema de tracking
+                            local valorAntigo = HistoricoValores[caminhoCuringa]
+                            if valorAntigo and valorAntigo ~= valInt then
+                                -- Esse caminho mudou de valor! Promove ele a favorito
+                                CaminhoFavorito[caminhoCuringa] = true
+                            end
+                            
+                            -- Se ele é o que mais atualiza (ou se é o único), mandamos ele
+                            if CaminhoFavorito[caminhoCuringa] or not valorAntigo then
+                                table.insert(dadosAlvosParaEnviar, {
+                                    Nome = obj.Name,
+                                    Caminho = caminhoReal,
+                                    Caminho_Base = caminhoCuringa,
+                                    Valor = tostring(val),
+                                    Tipo = obj.ClassName,
+                                    Confiabilidade = "Alvo Monitorado (Vivo)"
+                                })
+                            end
+                            
+                            HistoricoValores[caminhoCuringa] = valInt
+                        end
+                    end
+                end
+                
+                -- Se não encontrou nenhum que está "vivo/mudando", manda todos para garantir
+                if #dadosAlvosParaEnviar == 0 then
+                    for _, caminhoCuringa in ipairs(targetData.paths) do
                         local caminhoReal = string.gsub(caminhoCuringa, "%[LOCAL_PLAYER%]", MeuNick)
                         local obj = resolverCaminho(caminhoReal)
                         if obj then
                             local val = "0"
                             pcall(function() val = obterValorSeguro(obj) end)
-                            table.insert(dadosAlvos, { 
-                                Nome = obj.Name, 
-                                Caminho = caminhoReal, 
-                                Caminho_Base = caminhoCuringa, 
-                                Valor = tostring(val), 
-                                Tipo = obj.ClassName, 
-                                Confiabilidade = "Alvo Monitorado" 
+                            table.insert(dadosAlvosParaEnviar, {
+                                Nome = obj.Name,
+                                Caminho = caminhoReal,
+                                Caminho_Base = caminhoCuringa,
+                                Valor = tostring(val),
+                                Tipo = obj.ClassName,
+                                Confiabilidade = "Alvo Monitorado (Geral)"
                             })
                         end
                     end
                 end
 
                 -- Atualiza o last_scan garantido e sobrepõe o arquivo sem falhas
-                local payload = { 
-                    place_id = PlaceId, 
-                    player_name = MeuNick, 
-                    last_scan = os.time(), 
-                    items_count = #dadosAlvos, 
-                    data = dadosAlvos 
+                local payload = {
+                    place_id = PlaceId,
+                    player_name = MeuNick,
+                    last_scan = os.time(),
+                    items_count = #dadosAlvosParaEnviar,
+                    data = dadosAlvosParaEnviar
                 }
                 pcall(function() writefile(statusName, HttpService:JSONEncode(payload)) end)
             end
