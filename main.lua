@@ -138,7 +138,7 @@ end
 task.spawn(iniciarAntiAFK)
 
 -- ==========================================
--- SISTEMA DE AUTO-INJECT
+-- SISTEMA DE AUTO-INJECT (CORRIGIDO)
 -- ==========================================
 local function auto_inject()
     if not config.auto_loading then return end
@@ -148,28 +148,36 @@ local function auto_inject()
     local globaisInjetados = 0
     local locaisInjetados = 0
 
-    if type(autoData.ALL) == "table" then
-        for _, scriptCode in ipairs(autoData.ALL) do
+    -- Lê a chave ALL_dict usando pairs (para dicionários)
+    if type(autoData.ALL_dict) == "table" then
+        for nomeScript, scriptCode in pairs(autoData.ALL_dict) do
             task.spawn(function()
                 local func, err = loadstring(scriptCode)
-                if func then pcall(func) else warn("[Hapieblox] Erro no Script Global: ", tostring(err)) end
+                if func then 
+                    pcall(func) 
+                else 
+                    warn("[Hapieblox] Erro no Script Global (" .. tostring(nomeScript) .. "): ", tostring(err)) 
+                end
             end)
             globaisInjetados = globaisInjetados + 1
         end
     end
 
-    if type(autoData.Games) == "table" and type(autoData.Games[currentPlaceId]) == "table" then
-        for _, scriptCode in ipairs(autoData.Games[currentPlaceId]) do
+    -- Lê a chave Games_dict usando pairs (para dicionários)
+    if type(autoData.Games_dict) == "table" and type(autoData.Games_dict[currentPlaceId]) == "table" then
+        for nomeScript, scriptCode in pairs(autoData.Games_dict[currentPlaceId]) do
             task.spawn(function()
                 local func, err = loadstring(scriptCode)
-                if func then pcall(func) else warn("[Hapieblox] Erro no Script Local: ", tostring(err)) end
+                if func then 
+                    pcall(func) 
+                else 
+                    warn("[Hapieblox] Erro no Script Local (" .. tostring(nomeScript) .. "): ", tostring(err)) 
+                end
             end)
             locaisInjetados = locaisInjetados + 1
         end
     end
 
-    -- Agora a notificação aparece SEMPRE que o auto_loading for True, 
-    -- independente se achou 0 ou 10 scripts para injetar.
     task.spawn(function()
         task.wait(1)
         tocarSFX(2811444158, 0.8, 1.2)
