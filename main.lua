@@ -54,6 +54,7 @@ end
 -- ==========================================
 local arqConfig = "Hapieblox_Config.json"
 local arqAutoLoad = "Hapieblox_AutoLoad.json"
+local arqGlobalId = "Hapieblox_GlobalId.json"
 
 local function carregarConfig()
     local padrao = {
@@ -127,6 +128,44 @@ local function carregarAutoLoad()
 end
 
 -- ==========================================
+-- SISTEMA DE ID GLOBAL (UNIVERSE ID MAP)
+-- ==========================================
+local function registarGlobalId()
+    local dados = {}
+    if isfile and readfile and pcall(function() isfile(arqGlobalId) end) and isfile(arqGlobalId) then
+        local sucesso, json = pcall(function() return HttpService:JSONDecode(readfile(arqGlobalId)) end)
+        if sucesso and json then dados = json end
+    end
+
+    local currentUniverse = tostring(game.GameId)
+    local currentPlace = tostring(game.PlaceId)
+
+    if type(dados) ~= "table" then dados = {} end
+    if type(dados[currentUniverse]) ~= "table" then
+        dados[currentUniverse] = {}
+    end
+
+    local existe = false
+    for _, pId in ipairs(dados[currentUniverse]) do
+        if pId == currentPlace then 
+            existe = true 
+            break 
+        end
+    end
+
+    if not existe then
+        table.insert(dados[currentUniverse], currentPlace)
+        if writefile then
+            pcall(function() writefile(arqGlobalId, HttpService:JSONEncode(dados)) end)
+        end
+    end
+
+    return dados
+end
+
+local globalIdsRegistry = registarGlobalId()
+
+-- ==========================================
 -- SISTEMA ANTI-AFK
 -- ==========================================
 local function iniciarAntiAFK()
@@ -138,40 +177,55 @@ end
 task.spawn(iniciarAntiAFK)
 
 -- ==========================================
--- SISTEMA DE AUTO-INJECT (CORRIGIDO)
+-- SISTEMA DE AUTO-INJECT (CORRIGIDO C/ GLOBAL)
 -- ==========================================
 local function auto_inject()
     if not config.auto_loading then return end
 
     local autoData = carregarAutoLoad()
     local currentPlaceId = tostring(game.PlaceId)
+    local currentUniverseId = tostring(game.GameId)
     local globaisInjetados = 0
     local locaisInjetados = 0
+    
+    -- Lógica de ID Global: Se não existir script para este PlaceId, 
+    -- procura se há algum script associado a outro mapa dentro do mesmo Universe ID.
+    local targetPlaceId = currentPlaceId
+    if autoData.Games_dict then
+        if not autoData.Games_dict[currentPlaceId] and globalIdsRegistry[currentUniverseId] then
+            for _, linkedPlace in ipairs(globalIdsRegistry[currentUniverseId]) do
+                if autoData.Games_dict[linkedPlace] then
+                    targetPlaceId = linkedPlace
+                    break
+                end
+            end
+        end
+    end
 
     -- Lê a chave ALL_dict usando pairs (para dicionários)
     if type(autoData.ALL_dict) == "table" then
         for nomeScript, scriptCode in pairs(autoData.ALL_dict) do
             task.spawn(function()
                 local func, err = loadstring(scriptCode)
-                if func then 
-                    pcall(func) 
-                else 
-                    warn("[Hapieblox] Erro no Script Global (" .. tostring(nomeScript) .. "): ", tostring(err)) 
+                if func then
+                    pcall(func)
+                else
+                    warn("[Hapieblox] Erro no Script Global (" .. tostring(nomeScript) .. "): ", tostring(err))
                 end
             end)
             globaisInjetados = globaisInjetados + 1
         end
     end
 
-    -- Lê a chave Games_dict usando pairs (para dicionários)
-    if type(autoData.Games_dict) == "table" and type(autoData.Games_dict[currentPlaceId]) == "table" then
-        for nomeScript, scriptCode in pairs(autoData.Games_dict[currentPlaceId]) do
+    -- Lê a chave Games_dict usando o targetPlaceId (ID original ou o ID resolvido pelo Global)
+    if type(autoData.Games_dict) == "table" and type(autoData.Games_dict[targetPlaceId]) == "table" then
+        for nomeScript, scriptCode in pairs(autoData.Games_dict[targetPlaceId]) do
             task.spawn(function()
                 local func, err = loadstring(scriptCode)
-                if func then 
-                    pcall(func) 
-                else 
-                    warn("[Hapieblox] Erro no Script Local (" .. tostring(nomeScript) .. "): ", tostring(err)) 
+                if func then
+                    pcall(func)
+                else
+                    warn("[Hapieblox] Erro no Script Local (" .. tostring(nomeScript) .. "): ", tostring(err))
                 end
             end)
             locaisInjetados = locaisInjetados + 1
@@ -416,7 +470,6 @@ local function tocarIntro(aoTerminar)
             end)
             introGui:Destroy()
 
-            -- Chama as automações só depois que tudo acabar
             if aoTerminar then aoTerminar() end
         end)
     end)
@@ -439,13 +492,9 @@ end
 -- INÍCIO DOS SISTEMAS
 -- ==========================================
 local function iniciarSistemasFarm()
-    -- 1. Injeta os scripts de usuário (Agora sempre notifica se estiver ligado)
     task.spawn(auto_inject)
-
-    -- 2. Disparo imediato do Auto-Extract na entrada
     dispararAutoExtract()
 
-    -- 3. Inicia Auto-Updater do Hapieblox (Sem chamadas API inúteis)
     task.spawn(function()
         while true do
             task.wait(15)
@@ -454,7 +503,7 @@ local function iniciarSistemasFarm()
                 local data = HttpService:JSONDecode(req)
                 if data and data.version and data.version ~= currentVersion then
                     tocarSFX(2865228021, 1, 1)
-                    game:GetService("StarterGui"):SetCore("SendNotification", {Title="🔥 Update", Text="Nova versão detectada! Atualizando...", Duration=4})
+                    game:GetService("StarterGui"):SetCore("SendNotification", {Title="🔥 Update", Text="Nova versão detetada! A atualizar...", Duration=4})
                     task.wait(1.5)
                     limparTudo()
                     loadstring(game:HttpGet(rawMainUrl .. "?t=" .. tostring(tick())))()
@@ -464,5 +513,4 @@ local function iniciarSistemasFarm()
     end)
 end
 
--- Roda a intro inicial e manda a função esperar a intro terminar
 tocarIntro(iniciarSistemasFarm)
